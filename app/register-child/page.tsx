@@ -3,7 +3,7 @@
 import Phone from "@/components/Phone";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function RegisterChildPage() {
   const router = useRouter();
@@ -13,48 +13,93 @@ export default function RegisterChildPage() {
   const [classroomName, setClassroomName] = useState("徳島体操");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  async function checkSession() {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      setLoggedIn(true);
+    }
+  }
 
   async function register() {
-    if (!parentName || !childName || !email || !password) {
-      alert("未入力の項目があります");
+    if (saving) {
       return;
     }
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password
-    });
-
-    if (signUpError) {
-      alert(signUpError.message);
+    if (!parentName || !childName) {
+      alert("保護者名と子どもの名前を入力してください");
       return;
     }
 
-    const userId = signUpData.user?.id;
+    setSaving(true);
+
+    // すでにログイン済みならそのユーザーを使う。
+    // 未ログインなら新規登録（既にアカウントがあればログインで継続）。
+    let userId: string | null = null;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    userId = sessionData.session?.user?.id ?? null;
 
     if (!userId) {
-      alert("ユーザー作成に失敗しました");
+      if (!email || !password) {
+        alert("メールアドレスとパスワードを入力してください");
+        setSaving(false);
+        return;
+      }
+
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({ email, password });
+
+      if (signUpError) {
+        // 既にアカウントがある場合などはログインを試す
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({ email, password });
+
+        if (signInError || !signInData.user) {
+          alert(
+            "このメールアドレスは既に登録されています。パスワードが正しいかご確認ください。"
+          );
+          setSaving(false);
+          return;
+        }
+
+        userId = signInData.user.id;
+      } else {
+        userId = signUpData.user?.id ?? null;
+      }
+    }
+
+    if (!userId) {
+      alert("ユーザー情報の取得に失敗しました");
+      setSaving(false);
       return;
     }
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      name: parentName,
-      role: "parent"
-    });
+    // プロフィール（保護者）を作成・更新
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert({ id: userId, name: parentName, role: "parent" });
 
     if (profileError) {
       alert(profileError.message);
+      setSaving(false);
       return;
     }
 
+    // 教室を取得（schema.sqlで初期登録済み）
     const { data: classroom } = await supabase
       .from("classrooms")
       .select("id")
       .eq("name", classroomName)
       .maybeSingle();
 
-    let classroomId = classroom?.id;
+    let classroomId = classroom?.id ?? null;
 
     if (!classroomId) {
       const { data: newClassroom, error: classroomError } = await supabase
@@ -68,23 +113,36 @@ export default function RegisterChildPage() {
 
       if (classroomError) {
         alert(classroomError.message);
+        setSaving(false);
         return;
       }
 
       classroomId = newClassroom.id;
     }
 
-    const { error: childError } = await supabase.from("children").insert({
-      parent_id: userId,
-      name: childName,
-      classroom_id: classroomId
-    });
+    // すでに子どもが登録済みなら重複作成しない
+    const { data: existingChild } = await supabase
+      .from("children")
+      .select("id")
+      .eq("parent_id", userId)
+      .limit(1)
+      .maybeSingle();
 
-    if (childError) {
-      alert(childError.message);
-      return;
+    if (!existingChild) {
+      const { error: childError } = await supabase.from("children").insert({
+        parent_id: userId,
+        name: childName,
+        classroom_id: classroomId
+      });
+
+      if (childError) {
+        alert(childError.message);
+        setSaving(false);
+        return;
+      }
     }
 
+    setSaving(false);
     router.push("/egg-select");
   }
 
@@ -92,6 +150,12 @@ export default function RegisterChildPage() {
     <Phone title="子ども登録">
       <div className="card">
         <div className="title">基本情報</div>
+
+        {loggedIn && (
+          <div className="note" style={{ marginBottom: 8 }}>
+            ログイン済みです。子どもの情報を入力して続けてください。
+          </div>
+        )}
 
         <label className="label">保護者名</label>
         <input
@@ -122,24 +186,28 @@ export default function RegisterChildPage() {
           <option>Sowers Club</option>
         </select>
 
-        <label className="label">メールアドレス</label>
-        <input
-          className="input"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
+        {!loggedIn && (
+          <>
+            <label className="label">メールアドレス</label>
+            <input
+              className="input"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
 
-        <label className="label">パスワード</label>
-        <input
-          className="input"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+            <label className="label">パスワード</label>
+            <input
+              className="input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </>
+        )}
 
-        <button className="button" onClick={register}>
-          登録して卵を選ぶ
+        <button className="button" onClick={register} disabled={saving}>
+          {saving ? "登録中…" : "登録して卵を選ぶ"}
         </button>
       </div>
     </Phone>
