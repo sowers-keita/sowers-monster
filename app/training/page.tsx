@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type TrainingType = "power" | "technique" | "speed";
+type TrainingType = "power" | "technique" | "speed" | "stamina";
 
 type TrainingConfig = {
   type: TrainingType;
@@ -36,6 +36,13 @@ const trainings: TrainingConfig[] = [
     title: "連打トレーニング",
     description: "10秒間でできるだけたくさんタップ！回数で成長量が変わるよ。",
     targetLabel: "スピード"
+  },
+  {
+    type: "stamina",
+    title: "ランニングトレーニング",
+    description:
+      "「左」と「右」を交互にタップして走ろう！10秒間の歩数で成長量が変わるよ。",
+    targetLabel: "スタミナ"
   }
 ];
 
@@ -83,6 +90,10 @@ export default function TrainingPage() {
 
     if (selected === "speed") {
       update.speed = Math.min(monster.speed + amount, monster.speed_max);
+    }
+
+    if (selected === "stamina") {
+      update.stamina = Math.min(monster.stamina + amount, monster.stamina_max);
     }
 
     const { error } = await supabase
@@ -163,6 +174,10 @@ export default function TrainingPage() {
 
           {mode === "playing" && selected === "speed" && (
             <TapTraining config={config} onClear={onClear} />
+          )}
+
+          {mode === "playing" && selected === "stamina" && (
+            <RunningTraining config={config} onClear={onClear} />
           )}
 
           {mode === "clear" && (
@@ -654,6 +669,123 @@ function TapTraining({
       <button className="button red" onClick={tap}>
         {started ? "連打！" : "スタート（タップ！）"}
       </button>
+    </div>
+  );
+}
+
+// ④ ランニング（スタミナ）：左右の足を交互にタップ。10秒の歩数で +1/+2/+3。
+function RunningTraining({
+  config,
+  onClear
+}: {
+  config: TrainingConfig;
+  onClear: (amount: number) => void;
+}) {
+  const [started, setStarted] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [steps, setSteps] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(10);
+  const [message, setMessage] = useState("「左」からスタート！");
+
+  const stepsRef = useRef(0);
+  const nextFootRef = useRef<"L" | "R">("L");
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (!started || finished) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        const next = Number((prev - 0.1).toFixed(1));
+
+        if (next <= 0) {
+          window.clearInterval(timer);
+          setFinished(true);
+
+          if (!firedRef.current) {
+            firedRef.current = true;
+            const c = stepsRef.current;
+            const points = c <= 15 ? 1 : c <= 30 ? 2 : 3;
+            onClear(points);
+          }
+
+          return 0;
+        }
+
+        return next;
+      });
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [started, finished, onClear]);
+
+  function step(foot: "L" | "R") {
+    if (finished) {
+      return;
+    }
+
+    if (!started) {
+      setStarted(true);
+    }
+
+    if (foot === nextFootRef.current) {
+      stepsRef.current += 1;
+      setSteps(stepsRef.current);
+      nextFootRef.current = nextFootRef.current === "L" ? "R" : "L";
+      setMessage(nextFootRef.current === "L" ? "つぎは「左」！" : "つぎは「右」！");
+    } else {
+      setMessage("交互にタップ！");
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="title">{config.title}</div>
+      <div className="note">{config.description}</div>
+
+      <div
+        style={{
+          height: 160,
+          border: "4px solid #2b1b10",
+          borderRadius: 24,
+          marginTop: 16,
+          background: "linear-gradient(#eafff1, #d6f5df)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center"
+        }}
+      >
+        <div style={{ fontSize: 30, fontWeight: 900, color: "#34b85a" }}>
+          {timeLeft.toFixed(1)} 秒
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 900, color: "#2b1b10" }}>
+          {steps} 歩
+        </div>
+      </div>
+
+      <div className="title" style={{ marginTop: 12, fontSize: 18 }}>
+        {message}
+      </div>
+      <div className="note">15歩以下→+1 / 16〜30歩→+2 / 31歩以上→+3</div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+          marginTop: 6
+        }}
+      >
+        <button className="button green" onClick={() => step("L")}>
+          左
+        </button>
+        <button className="button blue" onClick={() => step("R")}>
+          右
+        </button>
+      </div>
     </div>
   );
 }
