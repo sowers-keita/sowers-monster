@@ -154,7 +154,14 @@ export default function HomePage() {
 
               <div className="monster-walker">
                 <div className="monster-hopper">
-                  <MonsterIcon color={monster.egg_color} size={130} happy={happy} />
+                  <MonsterIcon
+                    color={monster.egg_color}
+                    size={130}
+                    happy={happy}
+                    stage={monster.stage}
+                    speed={monster.speed}
+                    technique={monster.technique}
+                  />
                 </div>
                 <div className="monster-shadow" />
               </div>
