@@ -22,7 +22,7 @@ const trainings: TrainingConfig[] = [
   {
     type: "friend",
     stat: "power",
-    title: "フレンドトレーニング",
+    title: "連打トレーニング",
     description:
       "10秒間でできるだけたくさんタップ！回数が多いほどパワーがアップするよ。",
     targetLabel: "パワー"
@@ -685,7 +685,7 @@ function TapTraining({
 //    崖に落ちる or 段差に引っかかって画面外に出ると終了。進んだメートルで判定。
 //    5m以下→+1 / 6〜19m→+2 / 20m以上→+3。
 const PX_PER_M = 44; // 1メートルの表示ピクセル
-const SPEED_MPS = 1; // 1秒に1メートル進む
+const SPEED_MPS = 1.3; // 進む速さ（少し速め）
 const STAGE_H = 220; // ステージ高さ
 const BASE_H = 46; // レベル0の地面の高さ（px）
 const LEVEL_STEP = 34; // 1段の高さ（px）
@@ -697,30 +697,32 @@ const JUMP_CUT = 0.42; // 早く離したときの減速率（小ジャンプ）
 const STEP_TOL = 8; // これ以下の段差はそのまま登れる
 const GAP = -999; // 崖（穴）のセンチネル
 
-// コース生成：平地・登り・下り・崖をランダムに並べる。最初の6mは安全。
+// コース生成：平地・登り・下り・崖をランダムに並べる。最初の4mは安全。
+// 崖を多めに出す。崖の後は必ず短い足場を置いて連続落下を防ぐ。
 function genCourse(): number[] {
   const h: number[] = [];
-  for (let i = 0; i < 6; i++) h.push(BASE_H);
+  for (let i = 0; i < 4; i++) h.push(BASE_H);
   let level = 0;
-  while (h.length < 240) {
+  while (h.length < 320) {
     const r = Math.random();
-    if (r < 0.2) {
-      // 崖（1マス）→ 同じ高さに着地
+    if (r < 0.42) {
+      // 崖（1マス）→ 同じ高さに着地して1〜2マスの足場
       h.push(GAP);
-      h.push(BASE_H + level * LEVEL_STEP);
-    } else if (r < 0.42 && level < 2) {
+      const len = 1 + Math.floor(Math.random() * 2);
+      for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
+    } else if (r < 0.58 && level < 2) {
       // 登り
       level += 1;
-      const len = 2 + Math.floor(Math.random() * 2);
+      const len = 1 + Math.floor(Math.random() * 2);
       for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
-    } else if (r < 0.64 && level > 0) {
+    } else if (r < 0.74 && level > 0) {
       // 下り
       level -= 1;
-      const len = 2 + Math.floor(Math.random() * 2);
+      const len = 1 + Math.floor(Math.random() * 2);
       for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
     } else {
-      // 平地
-      const len = 2 + Math.floor(Math.random() * 3);
+      // 平地（短め）
+      const len = 1 + Math.floor(Math.random() * 2);
       for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
     }
   }
