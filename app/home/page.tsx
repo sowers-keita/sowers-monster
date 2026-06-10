@@ -29,6 +29,9 @@ export default function HomePage() {
   const [monster, setMonster] = useState<HomeMonster | null>(null);
   const [childName, setChildName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     loadHome();
@@ -74,6 +77,36 @@ export default function HomePage() {
     setLoading(false);
   }
 
+  async function saveName() {
+    if (!monster || savingName) {
+      return;
+    }
+
+    const newName = nameInput.trim();
+
+    if (!newName) {
+      alert("名前を入力してください");
+      return;
+    }
+
+    setSavingName(true);
+
+    const { error } = await supabase
+      .from("monsters")
+      .update({ name: newName })
+      .eq("id", monster.id);
+
+    if (error) {
+      alert(error.message);
+      setSavingName(false);
+      return;
+    }
+
+    setMonster({ ...monster, name: newName });
+    setEditingName(false);
+    setSavingName(false);
+  }
+
   if (loading) {
     return (
       <main className="page">
@@ -100,15 +133,78 @@ export default function HomePage() {
 
         <div className="content" style={{ paddingBottom: 92 }}>
           <div className="card" style={{ textAlign: "center", background: "#fff1cf" }}>
-            <MonsterIcon color={monster.egg_color} size={130} />
-
-            <div className="title" style={{ marginTop: 10 }}>
-              {monster.name}
+            <div className="monster-stage">
+              <div className="monster-walker">
+                <div className="monster-hopper">
+                  <MonsterIcon color={monster.egg_color} size={130} />
+                </div>
+                <div className="monster-shadow" />
+              </div>
             </div>
+
+            {!editingName ? (
+              <div
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8
+                }}
+              >
+                <div className="title" style={{ margin: 0 }}>
+                  {monster.name}
+                </div>
+                <button
+                  onClick={() => {
+                    setNameInput(monster.name);
+                    setEditingName(true);
+                  }}
+                  style={{
+                    border: "3px solid #2b1b10",
+                    background: "#fff",
+                    borderRadius: 999,
+                    padding: "4px 12px",
+                    fontWeight: 900,
+                    cursor: "pointer"
+                  }}
+                >
+                  なまえ変更
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginTop: 10 }}>
+                <input
+                  className="input"
+                  value={nameInput}
+                  onChange={(event) => setNameInput(event.target.value)}
+                  maxLength={12}
+                  placeholder="あたらしいなまえ"
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    className="button"
+                    onClick={saveName}
+                    disabled={savingName}
+                    style={{ flex: 1 }}
+                  >
+                    {savingName ? "保存中…" : "保存"}
+                  </button>
+                  <button
+                    className="button gray"
+                    onClick={() => setEditingName(false)}
+                    style={{ flex: 1 }}
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div
               style={{
                 display: "inline-block",
+                marginTop: 8,
                 background: "#ff7a00",
                 color: "white",
                 border: "3px solid #2b1b10",
