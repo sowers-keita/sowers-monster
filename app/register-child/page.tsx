@@ -98,7 +98,7 @@ export default function RegisterChildPage() {
           className="input"
           value={parentName}
           onChange={(event) => setParentName(event.target.value)}
-          placeholder="例：木原 敬太"
+          placeholder="例：山田 太郎"
         />
 
         <label className="label">子どもの名前</label>
@@ -106,7 +106,7 @@ export default function RegisterChildPage() {
           className="input"
           value={childName}
           onChange={(event) => setChildName(event.target.value)}
-          placeholder="例：なな"
+          placeholder="例：たろう"
         />
 
         <label className="label">所属教室</label>
