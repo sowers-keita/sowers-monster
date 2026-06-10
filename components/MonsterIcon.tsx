@@ -4,19 +4,35 @@ type MonsterIconProps = {
   color?: EggColor;
   size?: number;
   happy?: boolean;
+  stage?: string;
+  speed?: number;
+  technique?: number;
 };
+
+// 進化段階＋分岐（スピード型/テクニック型）から画像を決める
+function birdForm(stage?: string, speed = 0, technique = 0) {
+  if (stage === "ビギナー期") return "bird2";
+  if (stage === "ヒーロー期") return speed >= technique ? "bird3s" : "bird3t";
+  if (stage === "覚醒期") return speed >= technique ? "bird4s" : "bird4t";
+  return "bird1"; // スタート期 / 既定
+}
 
 export default function MonsterIcon({
   color = "red",
   size = 120,
-  happy = false
+  happy = false,
+  stage,
+  speed = 0,
+  technique = 0
 }: MonsterIconProps) {
   // トリ系（ピンクの卵）は実際のドット絵スプライトを表示
   if (color === "pink") {
+    const form = birdForm(stage, speed, technique);
+    const src = `/monsters/${form}_${happy ? "happy" : "normal"}.png`;
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={happy ? "/monsters/piyo_happy.png" : "/monsters/piyo_normal.png"}
+        src={src}
         alt="モンスター"
         width={size}
         height={size}
