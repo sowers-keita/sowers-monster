@@ -95,3 +95,6 @@ home
 - coach
 - parent-settings
 - admin-sowers
+
+
+本格運用版（Next.js + Supabase）をVercel + GitHubで公開。
