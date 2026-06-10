@@ -143,15 +143,7 @@ export default function HomePage() {
             </div>
 
             {!editingName ? (
-              <div
-                style={{
-                  marginTop: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8
-                }}
-              >
+              <div style={{ marginTop: 10 }}>
                 <div className="title" style={{ margin: 0 }}>
                   {monster.name}
                 </div>
@@ -161,15 +153,18 @@ export default function HomePage() {
                     setEditingName(true);
                   }}
                   style={{
-                    border: "3px solid #2b1b10",
-                    background: "#fff",
-                    borderRadius: 999,
-                    padding: "4px 12px",
-                    fontWeight: 900,
+                    border: "none",
+                    background: "transparent",
+                    color: "#9a8266",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    textDecoration: "underline",
+                    padding: "2px 4px",
+                    marginTop: 2,
                     cursor: "pointer"
                   }}
                 >
-                  なまえ変更
+                  なまえを変更
                 </button>
               </div>
             ) : (
@@ -226,24 +221,28 @@ export default function HomePage() {
               label="パワー"
               current={monster.power}
               max={monster.power_max}
+              color="#ff4b35"
             />
 
             <Status
               label="スタミナ"
               current={monster.stamina}
               max={monster.stamina_max}
+              color="#34b85a"
             />
 
             <Status
               label="スピード"
               current={monster.speed}
               max={monster.speed_max}
+              color="#2f8ee5"
             />
 
             <Status
               label="テクニック"
               current={monster.technique}
               max={monster.technique_max}
+              color="#9b51e0"
             />
           </div>
 
@@ -267,16 +266,20 @@ export default function HomePage() {
             </div>
           </div>
 
+          <button className="button" onClick={() => router.push("/mission")}>
+            ミッション
+          </button>
+
           <button className="button orange" onClick={() => router.push("/training")}>
             トレーニング
           </button>
 
-          <button className="button blue" onClick={() => router.push("/inventory")}>
-            持ち物
+          <button className="button red" onClick={() => router.push("/battle")}>
+            バトル
           </button>
 
-          <button className="button" onClick={() => router.push("/battle")}>
-            バトル
+          <button className="button blue" onClick={() => router.push("/inventory")}>
+            持ち物
           </button>
 
           <button className="button orange" onClick={() => router.push("/zukan")}>
@@ -293,25 +296,30 @@ export default function HomePage() {
 function Status({
   label,
   current,
-  max
+  max,
+  color
 }: {
   label: string;
   current: number;
   max: number;
+  color: string;
 }) {
   const percent = max > 0 ? Math.min(100, Math.round((current / max) * 100)) : 0;
 
   return (
     <div className="status-row">
       <div className="status-label">
-        <span>{label}</span>
+        <span style={{ color }}>{label}</span>
         <span>
           {current} / {max}
         </span>
       </div>
 
       <div className="status-bar">
-        <div className="status-fill" style={{ width: `${percent}%` }} />
+        <div
+          className="status-fill"
+          style={{ width: `${percent}%`, background: color }}
+        />
       </div>
     </div>
   );
