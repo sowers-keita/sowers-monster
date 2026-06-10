@@ -78,6 +78,9 @@ export default function BattlePage() {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [resultText, setResultText] = useState("");
+  const [battlesToday, setBattlesToday] = useState(0);
+
+  const DAILY_LIMIT = 10;
 
   useEffect(() => {
     load();
@@ -101,6 +104,18 @@ export default function BattlePage() {
     setLog(
       `${randomOpponent.classroom}の ${randomOpponent.name}さん とマッチング！`
     );
+
+    // 当日のバトル回数を数える
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const { count } = await supabase
+      .from("battles")
+      .select("*", { count: "exact", head: true })
+      .eq("child_id", current.child_id)
+      .gte("created_at", start.toISOString());
+
+    setBattlesToday(count || 0);
   }
 
   function wait(ms: number) {
@@ -149,6 +164,11 @@ export default function BattlePage() {
 
   async function startBattle() {
     if (!monster || !opponent || started) {
+      return;
+    }
+
+    if (battlesToday >= DAILY_LIMIT) {
+      alert("本日のバトルは終了しました（10/10）。また明日挑戦してね！");
       return;
     }
 
@@ -231,6 +251,8 @@ export default function BattlePage() {
       return;
     }
 
+    setBattlesToday((prev) => prev + 1);
+
     setMonster({
       ...monster,
       battle_power: nextBattlePower
@@ -274,6 +296,15 @@ export default function BattlePage() {
               {opponent.classroom}の{opponent.name}さん
             </div>
             <div className="note">{opponent.monsterName}とマッチング！</div>
+            <div
+              style={{
+                marginTop: 8,
+                fontWeight: 900,
+                color: battlesToday >= DAILY_LIMIT ? "#e53935" : "#2b1b10"
+              }}
+            >
+              本日のバトル {battlesToday} / {DAILY_LIMIT}
+            </div>
           </div>
 
           <div
@@ -327,10 +358,20 @@ export default function BattlePage() {
             </div>
           )}
 
-          {!started && (
+          {!started && battlesToday < DAILY_LIMIT && (
             <button className="button red" onClick={startBattle}>
               バトル開始！
             </button>
+          )}
+
+          {!started && battlesToday >= DAILY_LIMIT && (
+            <div className="card" style={{ textAlign: "center" }}>
+              <div className="title">本日のバトルは終了</div>
+              <div className="note">また明日挑戦してね！（10/10）</div>
+              <button className="button" onClick={() => router.push("/home")}>
+                ホームへ戻る
+              </button>
+            </div>
           )}
 
           {finished && (
