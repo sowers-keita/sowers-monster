@@ -254,11 +254,75 @@ button:active {
 .monster-stage {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 190px;
   overflow: hidden;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  border-radius: 16px;
+  border: 3px solid #2b1b10;
+  /* 空 → うっすら海 → 草原 */
+  background: linear-gradient(
+    #bfe9ff 0%,
+    #d8f3ff 38%,
+    #86c9e6 50%,
+    #a7da77 58%,
+    #6fc04a 100%
+  );
+}
+
+.scene-cloud {
+  position: absolute;
+  width: 64px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  z-index: 1;
+}
+
+/* 遠くの山（草原の奥） */
+.scene-mountain {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 1;
+}
+
+.scene-mountain.left {
+  left: 4%;
+  bottom: 40%;
+  border-left: 52px solid transparent;
+  border-right: 52px solid transparent;
+  border-bottom: 56px solid #93a7bf;
+}
+
+.scene-mountain.mid {
+  left: 36%;
+  bottom: 41%;
+  border-left: 64px solid transparent;
+  border-right: 64px solid transparent;
+  border-bottom: 72px solid #8295ae;
+}
+
+.scene-mountain.right {
+  right: 2%;
+  bottom: 40%;
+  border-left: 48px solid transparent;
+  border-right: 48px solid transparent;
+  border-bottom: 50px solid #9cafc6;
+}
+
+/* 手前の草原のふくらみ */
+.scene-grass {
+  position: absolute;
+  left: -10%;
+  bottom: -40px;
+  width: 120%;
+  height: 90px;
+  background: #6fc04a;
+  border-radius: 50% 50% 0 0;
+  border-top: 5px solid #59b13a;
+  z-index: 2;
 }
 
 .monster-walker {
