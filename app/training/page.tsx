@@ -5,7 +5,7 @@ import MonsterIcon from "@/components/MonsterIcon";
 import { ActiveMonster, getMyActiveMonster } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type TrainingType = "power" | "technique" | "speed";
 
@@ -14,30 +14,28 @@ type TrainingConfig = {
   title: string;
   description: string;
   targetLabel: string;
-  clearText: string;
 };
 
 const trainings: TrainingConfig[] = [
   {
     type: "power",
     title: "ストップトレーニング",
-    description: "動くゲージを真ん中で止めよう。5回成功でクリア。",
-    targetLabel: "パワー",
-    clearText: "パワーアップ！"
+    description:
+      "10秒間で、動くバーを真ん中の緑ゾーンで何回止められるかな？成功するほどバーが速くなる！",
+    targetLabel: "パワー"
   },
   {
     type: "technique",
     title: "糸通しトレーニング",
-    description: "長押しで上昇、離すと下降。10秒当たらず進もう。",
-    targetLabel: "テクニック",
-    clearText: "テクニックアップ！"
+    description:
+      "長押しで上昇、はなすと下降。流れてくる壁のすき間を通ろう。1回でもぶつかったら終わり！",
+    targetLabel: "テクニック"
   },
   {
     type: "speed",
     title: "連打トレーニング",
-    description: "10秒間で20回以上タップしよう。",
-    targetLabel: "スピード",
-    clearText: "スピードアップ！"
+    description: "10秒間でできるだけたくさんタップ！回数で成長量が変わるよ。",
+    targetLabel: "スピード"
   }
 ];
 
@@ -47,6 +45,7 @@ export default function TrainingPage() {
   const [monster, setMonster] = useState<ActiveMonster | null>(null);
   const [selected, setSelected] = useState<TrainingType>("power");
   const [mode, setMode] = useState<"menu" | "playing" | "clear">("menu");
+  const [earned, setEarned] = useState(0);
 
   useEffect(() => {
     loadMonster();
@@ -67,7 +66,7 @@ export default function TrainingPage() {
     return trainings.find((item) => item.type === selected) || trainings[0];
   }, [selected]);
 
-  async function onClear() {
+  async function onClear(amount: number) {
     if (!monster) {
       return;
     }
@@ -75,15 +74,15 @@ export default function TrainingPage() {
     const update: Partial<ActiveMonster> = {};
 
     if (selected === "power") {
-      update.power = Math.min(monster.power + 1, monster.power_max);
+      update.power = Math.min(monster.power + amount, monster.power_max);
     }
 
     if (selected === "technique") {
-      update.technique = Math.min(monster.technique + 1, monster.technique_max);
+      update.technique = Math.min(monster.technique + amount, monster.technique_max);
     }
 
     if (selected === "speed") {
-      update.speed = Math.min(monster.speed + 1, monster.speed_max);
+      update.speed = Math.min(monster.speed + amount, monster.speed_max);
     }
 
     const { error } = await supabase
@@ -102,6 +101,7 @@ export default function TrainingPage() {
     } as ActiveMonster;
 
     setMonster(nextMonster);
+    setEarned(amount);
     setMode("clear");
   }
 
@@ -168,7 +168,7 @@ export default function TrainingPage() {
           {mode === "clear" && (
             <div className="card" style={{ textAlign: "center" }}>
               <MonsterIcon color={monster.egg_color} size={120} />
-              <div className="title">{config.clearText}</div>
+              <div className="title">{config.targetLabel} +{earned}！</div>
               <div className="note">
                 {config.targetLabel}が上がりました。ホームで確認しましょう。
               </div>
@@ -193,51 +193,102 @@ export default function TrainingPage() {
   );
 }
 
+// ① ストップ：10秒チャレンジ。成功回数で +1/+2/+3。成功ごとに加速。
 function PowerTraining({
   config,
   onClear
 }: {
   config: TrainingConfig;
-  onClear: () => void;
+  onClear: (amount: number) => void;
 }) {
   const [position, setPosition] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [success, setSuccess] = useState(0);
-  const [message, setMessage] = useState("5回成功でクリア！");
+  const posRef = useRef(0);
+  const dirRef = useRef(1);
+  const speedRef = useRef(2.4);
+  const successRef = useRef(0);
+  const firedRef = useRef(false);
 
+  const [success, setSuccess] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(10);
+  const [started, setStarted] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [message, setMessage] = useState("ストップでスタート！");
+
+  // バーの動き（常に動く）
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setPosition((prev) => {
-        let next = prev + direction * 6;
+      if (finished) {
+        return;
+      }
 
-        if (next >= 100) {
-          next = 100;
-          setDirection(-1);
-        }
+      let next = posRef.current + dirRef.current * speedRef.current;
+
+      if (next >= 100) {
+        next = 100;
+        dirRef.current = -1;
+      }
+
+      if (next <= 0) {
+        next = 0;
+        dirRef.current = 1;
+      }
+
+      posRef.current = next;
+      setPosition(next);
+    }, 30);
+
+    return () => window.clearInterval(timer);
+  }, [finished]);
+
+  // 10秒カウントダウン
+  useEffect(() => {
+    if (!started || finished) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        const next = Number((prev - 0.1).toFixed(1));
 
         if (next <= 0) {
-          next = 0;
-          setDirection(1);
+          window.clearInterval(timer);
+          setFinished(true);
+
+          if (!firedRef.current) {
+            firedRef.current = true;
+            const c = successRef.current;
+            const points = c <= 3 ? 1 : c <= 5 ? 2 : 3;
+            onClear(points);
+          }
+
+          return 0;
         }
 
         return next;
       });
-    }, 45);
+    }, 100);
 
     return () => window.clearInterval(timer);
-  }, [direction]);
+  }, [started, finished, onClear]);
 
   function stop() {
-    if (position >= 35 && position <= 65) {
-      const next = success + 1;
-      setSuccess(next);
-      setMessage("ナイスストップ！");
+    if (finished) {
+      return;
+    }
 
-      if (next >= 5) {
-        onClear();
-      }
+    if (!started) {
+      setStarted(true);
+    }
+
+    const pos = posRef.current;
+
+    if (pos >= 38 && pos <= 62) {
+      successRef.current += 1;
+      setSuccess(successRef.current);
+      speedRef.current += 0.5;
+      setMessage("ナイスストップ！");
     } else {
-      setMessage("おしい！もう一回！");
+      setMessage("おしい！");
     }
   }
 
@@ -260,8 +311,8 @@ function PowerTraining({
         <div
           style={{
             position: "absolute",
-            left: "35%",
-            width: "30%",
+            left: "38%",
+            width: "24%",
             height: "100%",
             background: "#7cff8a",
             borderLeft: "4px dashed #2b1b10",
@@ -287,53 +338,136 @@ function PowerTraining({
         {message}
       </div>
 
-      <div className="note">成功：{success} / 5</div>
+      <div className="note">
+        のこり {timeLeft.toFixed(1)} 秒 ・ 成功 {success} 回
+      </div>
+      <div className="note">3回以下→+1 / 4・5回→+2 / 6回以上→+3</div>
 
       <button className="button red" onClick={stop}>
-        パンチ！
+        {started ? "ストップ！" : "スタート（ストップ！）"}
       </button>
     </div>
   );
 }
+
+// ② 糸通し：横スクロールする壁のすき間を通る。1回ぶつかったら終了。通過数で +1/+2/+3。
+type Wall = {
+  id: number;
+  x: number;
+  gap: number;
+  passed: boolean;
+};
 
 function ThreadTraining({
   config,
   onClear
 }: {
   config: TrainingConfig;
-  onClear: () => void;
+  onClear: (amount: number) => void;
 }) {
+  const [, setTick] = useState(0);
+  const [passedView, setPassedView] = useState(0);
   const [started, setStarted] = useState(false);
-  const [pressing, setPressing] = useState(false);
-  const [time, setTime] = useState(0);
-  const [y, setY] = useState(50);
-  const [message, setMessage] = useState("10秒当たらず進もう！");
+  const [finished, setFinished] = useState(false);
+  const [message, setMessage] = useState("長押しで上昇、はなすと下降！");
+
+  const state = useRef({
+    y: 50,
+    pressing: false,
+    walls: [] as Wall[],
+    passed: 0,
+    nextId: 1,
+    spawn: 0,
+    started: false,
+    finished: false
+  });
+
+  const BIRD_X = 18;
+  const HALF_GAP = 17;
+  const WALL_HALF = 7;
 
   useEffect(() => {
-    if (!started) {
-      return;
-    }
-
     const timer = window.setInterval(() => {
-      setTime((prev) => {
-        const next = prev + 0.1;
+      const s = state.current;
 
-        if (next >= 10) {
-          window.clearInterval(timer);
-          onClear();
+      if (!s.started || s.finished) {
+        return;
+      }
+
+      // 鳥の上下
+      s.y += s.pressing ? -2.4 : 2.4;
+      if (s.y < 5) s.y = 5;
+      if (s.y > 95) s.y = 95;
+
+      // 壁を左へ
+      for (const w of s.walls) {
+        w.x -= 1.7;
+      }
+
+      // 壁の出現
+      s.spawn += 1;
+      const last = s.walls[s.walls.length - 1];
+      if (!last || last.x < 58) {
+        if (s.spawn > 12) {
+          s.spawn = 0;
+          s.walls.push({
+            id: s.nextId++,
+            x: 104,
+            gap: 24 + Math.random() * 52,
+            passed: false
+          });
+        }
+      }
+
+      // 通過判定＆衝突判定
+      let hit = false;
+      for (const w of s.walls) {
+        if (!w.passed && w.x < BIRD_X - WALL_HALF) {
+          w.passed = true;
+          s.passed += 1;
         }
 
-        return next;
-      });
+        if (w.x < BIRD_X + WALL_HALF && w.x > BIRD_X - WALL_HALF) {
+          if (s.y < w.gap - HALF_GAP || s.y > w.gap + HALF_GAP) {
+            hit = true;
+          }
+        }
+      }
 
-      setY((prev) => {
-        const next = pressing ? prev - 3 : prev + 3;
-        return Math.max(10, Math.min(90, next));
-      });
-    }, 100);
+      // 画面外の壁を削除
+      s.walls = s.walls.filter((w) => w.x > -16);
+
+      setPassedView(s.passed);
+
+      if (hit) {
+        s.finished = true;
+        setFinished(true);
+        const p = s.passed <= 3 ? 1 : s.passed <= 6 ? 2 : 3;
+        setMessage(`ぶつかった！ ${s.passed}回通過 → テクニック +${p}`);
+        onClear(p);
+        return;
+      }
+
+      setTick((t) => t + 1);
+    }, 30);
 
     return () => window.clearInterval(timer);
-  }, [started, pressing, onClear]);
+  }, [onClear]);
+
+  function start() {
+    if (state.current.started) {
+      return;
+    }
+    state.current.started = true;
+    setStarted(true);
+    setMessage("すき間を通ろう！");
+  }
+
+  function press(on: boolean) {
+    state.current.pressing = on;
+  }
+
+  const s = state.current;
 
   return (
     <div className="card">
@@ -342,7 +476,7 @@ function ThreadTraining({
 
       <div
         style={{
-          height: 280,
+          height: 300,
           border: "4px solid #2b1b10",
           borderRadius: 24,
           marginTop: 16,
@@ -351,40 +485,46 @@ function ThreadTraining({
           overflow: "hidden"
         }}
       >
+        {s.walls.map((w) => (
+          <div key={w.id}>
+            <div
+              style={{
+                position: "absolute",
+                left: `${w.x}%`,
+                top: 0,
+                transform: "translateX(-50%)",
+                width: `${WALL_HALF * 2}%`,
+                height: `${Math.max(0, w.gap - HALF_GAP)}%`,
+                background: "#2f8ee5",
+                border: "3px solid #2b1b10"
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: `${w.x}%`,
+                top: `${w.gap + HALF_GAP}%`,
+                transform: "translateX(-50%)",
+                width: `${WALL_HALF * 2}%`,
+                height: `${Math.max(0, 100 - (w.gap + HALF_GAP))}%`,
+                background: "#2f8ee5",
+                border: "3px solid #2b1b10"
+              }}
+            />
+          </div>
+        ))}
+
         <div
           style={{
             position: "absolute",
-            left: 60,
-            top: `${y}%`,
-            transform: "translateY(-50%)",
-            width: 64,
-            height: 24,
-            background: "#111",
+            left: `${BIRD_X}%`,
+            top: `${s.y}%`,
+            transform: "translate(-50%, -50%)",
+            width: 40,
+            height: 28,
+            background: "#ff7a00",
+            border: "4px solid #2b1b10",
             borderRadius: 999
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            right: 60,
-            top: 0,
-            bottom: 0,
-            width: 38,
-            background: "#2f8ee5",
-            borderLeft: "4px solid #2b1b10",
-            borderRight: "4px solid #2b1b10"
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            right: 55,
-            top: "35%",
-            width: 48,
-            height: 120,
-            background: "#f7fbff",
-            borderTop: "4px solid #2b1b10",
-            borderBottom: "4px solid #2b1b10"
           }}
         />
       </div>
@@ -392,28 +532,29 @@ function ThreadTraining({
       <div className="title" style={{ marginTop: 16 }}>
         {message}
       </div>
-      <div className="note">経過：{time.toFixed(1)} / 10秒</div>
+      <div className="note">通過：{passedView} 回</div>
+      <div className="note">0〜3→+1 / 4〜6→+2 / 7以上→+3</div>
 
-      {!started && (
-        <button
-          className="button blue"
-          onClick={() => {
-            setStarted(true);
-            setMessage("長押しで上昇、離すと下降！");
-          }}
-        >
+      {!started && !finished && (
+        <button className="button blue" onClick={start}>
           スタート
         </button>
       )}
 
-      {started && (
+      {started && !finished && (
         <button
           className="button blue"
-          onMouseDown={() => setPressing(true)}
-          onMouseUp={() => setPressing(false)}
-          onMouseLeave={() => setPressing(false)}
-          onTouchStart={() => setPressing(true)}
-          onTouchEnd={() => setPressing(false)}
+          onMouseDown={() => press(true)}
+          onMouseUp={() => press(false)}
+          onMouseLeave={() => press(false)}
+          onTouchStart={(event) => {
+            event.preventDefault();
+            press(true);
+          }}
+          onTouchEnd={(event) => {
+            event.preventDefault();
+            press(false);
+          }}
         >
           長押しで上昇
         </button>
@@ -422,17 +563,20 @@ function ThreadTraining({
   );
 }
 
+// ③ 連打：10秒。回数で +1/+2/+3。
 function TapTraining({
   config,
   onClear
 }: {
   config: TrainingConfig;
-  onClear: () => void;
+  onClear: (amount: number) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [count, setCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(10);
+  const countRef = useRef(0);
+  const firedRef = useRef(false);
 
   useEffect(() => {
     if (!started || finished) {
@@ -447,17 +591,22 @@ function TapTraining({
           window.clearInterval(timer);
           setFinished(true);
 
-          if (count >= 20) {
-            onClear();
+          if (!firedRef.current) {
+            firedRef.current = true;
+            const c = countRef.current;
+            const points = c <= 30 ? 1 : c <= 70 ? 2 : 3;
+            onClear(points);
           }
+
+          return 0;
         }
 
-        return Math.max(0, next);
+        return next;
       });
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [started, finished, count, onClear]);
+  }, [started, finished, onClear]);
 
   function tap() {
     if (finished) {
@@ -468,7 +617,8 @@ function TapTraining({
       setStarted(true);
     }
 
-    setCount((prev) => prev + 1);
+    countRef.current += 1;
+    setCount(countRef.current);
   }
 
   return (
@@ -478,43 +628,32 @@ function TapTraining({
 
       <div
         style={{
-          height: 220,
+          height: 200,
           border: "4px solid #2b1b10",
           borderRadius: 24,
           marginTop: 16,
           background: "linear-gradient(#ffecec, #fffafa)",
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
-          alignItems: "center",
-          fontSize: 50,
-          fontWeight: 900,
-          color: "#ff3d3d"
+          alignItems: "center"
         }}
       >
-        {timeLeft.toFixed(1)}
+        <div style={{ fontSize: 40, fontWeight: 900, color: "#ff3d3d" }}>
+          {timeLeft.toFixed(1)}
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 900, color: "#2b1b10" }}>
+          連打：{count} 回
+        </div>
       </div>
 
-      <div className="title" style={{ marginTop: 16 }}>
-        連打：{count} / 20
+      <div className="note" style={{ marginTop: 12 }}>
+        30回以下→+1 / 31〜70回→+2 / 71回以上→+3
       </div>
 
       <button className="button red" onClick={tap}>
-        {started ? "連打！" : "スタート"}
+        {started ? "連打！" : "スタート（タップ！）"}
       </button>
-
-      {finished && count < 20 && (
-        <button
-          className="button orange"
-          onClick={() => {
-            setStarted(false);
-            setFinished(false);
-            setCount(0);
-            setTimeLeft(10);
-          }}
-        >
-          もう一回
-        </button>
-      )}
     </div>
   );
 }
