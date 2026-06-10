@@ -228,7 +228,7 @@ function RankCard({
           justifyContent: "center"
         }}
       >
-        <MonsterIcon color={row.egg_color} size={52} />
+        <MonsterIcon color={row.egg_color} size={52} stage={row.stage} />
       </div>
 
       <div style={{ overflow: "hidden" }}>
