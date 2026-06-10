@@ -330,6 +330,7 @@ button:active {
   width: 130px;
   animation: monster-walk 14s ease-in-out infinite;
   transform-origin: bottom center;
+  z-index: 5; /* キャラを一番手前に */
 }
 
 .monster-hopper {
