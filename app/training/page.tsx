@@ -7,10 +7,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type TrainingType = "power" | "technique" | "speed" | "stamina";
+type StatType = "power" | "stamina" | "speed" | "technique";
+type TrainingType = "friend" | "running" | "stop" | "thread";
 
 type TrainingConfig = {
   type: TrainingType;
+  stat: StatType;
   title: string;
   description: string;
   targetLabel: string;
@@ -18,31 +20,36 @@ type TrainingConfig = {
 
 const trainings: TrainingConfig[] = [
   {
-    type: "power",
-    title: "ストップトレーニング",
+    type: "friend",
+    stat: "power",
+    title: "フレンドトレーニング",
     description:
-      "10秒間で、動くバーを真ん中の緑ゾーンで何回止められるかな？成功するほどバーが速くなる！",
+      "10秒間でできるだけたくさんタップ！回数が多いほどパワーがアップするよ。",
     targetLabel: "パワー"
   },
   {
-    type: "technique",
-    title: "糸通しトレーニング",
+    type: "running",
+    stat: "stamina",
+    title: "ランニングトレーニング",
     description:
-      "長押しで上昇、はなすと下降。流れてくる壁のすき間を通ろう。1回でもぶつかったら終わり！",
-    targetLabel: "テクニック"
+      "草原を自動で走るよ！タップで小ジャンプ・長押しで大ジャンプ。崖に落ちずに何メートル進めるかな？",
+    targetLabel: "スタミナ"
   },
   {
-    type: "speed",
-    title: "連打トレーニング",
-    description: "10秒間でできるだけたくさんタップ！回数で成長量が変わるよ。",
+    type: "stop",
+    stat: "speed",
+    title: "ストップトレーニング",
+    description:
+      "動くバーを真ん中の緑ゾーンで何回止められるかな？成功するほどバーが速くなる！スピードが上がるよ。",
     targetLabel: "スピード"
   },
   {
-    type: "stamina",
-    title: "ランニングトレーニング",
+    type: "thread",
+    stat: "technique",
+    title: "糸通しトレーニング",
     description:
-      "草原を自動で走るよ！タップでジャンプして、崖（がけ）に落ちないように何メートル進めるかな？",
-    targetLabel: "スタミナ"
+      "長押しで上昇、はなすと下降。流れてくる壁のすき間を通ろう。1回でもぶつかったら終わり！テクニックが上がるよ。",
+    targetLabel: "テクニック"
   }
 ];
 
@@ -50,7 +57,7 @@ export default function TrainingPage() {
   const router = useRouter();
 
   const [monster, setMonster] = useState<ActiveMonster | null>(null);
-  const [selected, setSelected] = useState<TrainingType>("power");
+  const [selected, setSelected] = useState<TrainingType>("friend");
   const [mode, setMode] = useState<"menu" | "playing" | "clear">("menu");
   const [earned, setEarned] = useState(0);
 
@@ -80,19 +87,19 @@ export default function TrainingPage() {
 
     const update: Partial<ActiveMonster> = {};
 
-    if (selected === "power") {
+    if (config.stat === "power") {
       update.power = Math.min(monster.power + amount, monster.power_max);
     }
 
-    if (selected === "technique") {
+    if (config.stat === "technique") {
       update.technique = Math.min(monster.technique + amount, monster.technique_max);
     }
 
-    if (selected === "speed") {
+    if (config.stat === "speed") {
       update.speed = Math.min(monster.speed + amount, monster.speed_max);
     }
 
-    if (selected === "stamina") {
+    if (config.stat === "stamina") {
       update.stamina = Math.min(monster.stamina + amount, monster.stamina_max);
     }
 
@@ -164,20 +171,20 @@ export default function TrainingPage() {
             </>
           )}
 
-          {mode === "playing" && selected === "power" && (
-            <PowerTraining config={config} onClear={onClear} />
-          )}
-
-          {mode === "playing" && selected === "technique" && (
-            <ThreadTraining config={config} onClear={onClear} />
-          )}
-
-          {mode === "playing" && selected === "speed" && (
+          {mode === "playing" && selected === "friend" && (
             <TapTraining config={config} onClear={onClear} />
           )}
 
-          {mode === "playing" && selected === "stamina" && (
+          {mode === "playing" && selected === "running" && (
             <RunningTraining config={config} onClear={onClear} />
+          )}
+
+          {mode === "playing" && selected === "stop" && (
+            <PowerTraining config={config} onClear={onClear} />
+          )}
+
+          {mode === "playing" && selected === "thread" && (
+            <ThreadTraining config={config} onClear={onClear} />
           )}
 
           {mode === "clear" && (
@@ -673,16 +680,52 @@ function TapTraining({
   );
 }
 
-// ④ ランニング（スタミナ）：マリオ風の横スクロール。自動で右に進み、タップでジャンプ。
-//    崖に落ちずに何メートル進めるか。5m以下→+1 / 6〜19m→+2 / 20m以上→+3。
+// ④ ランニング（スタミナ）：マリオ風の横スクロール・プラットフォーマー。
+//    自動で右に進む。タップで小ジャンプ、長押しで大ジャンプ。
+//    崖に落ちる or 段差に引っかかって画面外に出ると終了。進んだメートルで判定。
+//    5m以下→+1 / 6〜19m→+2 / 20m以上→+3。
 const PX_PER_M = 44; // 1メートルの表示ピクセル
 const SPEED_MPS = 1; // 1秒に1メートル進む
-const STAGE_H = 210; // ステージ高さ
-const GROUND_H = 50; // 地面の高さ
-const CHAR_X = 64; // キャラの画面X位置
-const CHAR_SIZE = 40;
-const GRAVITY = 430; // 重力 px/s^2
-const JUMP_V = 280; // ジャンプ初速 px/s（最高到達点 ≒ 91px、滞空 ≒ 1.3秒）
+const STAGE_H = 220; // ステージ高さ
+const BASE_H = 46; // レベル0の地面の高さ（px）
+const LEVEL_STEP = 34; // 1段の高さ（px）
+const CHAR_BASE_X = 70; // キャラの基準画面X
+const CHAR_SIZE = 38;
+const GRAVITY = 600; // 重力 px/s^2
+const JUMP_VMAX = 360; // 大ジャンプ初速（最高到達 ≒ 108px、滞空 ≒ 1.2秒）
+const JUMP_CUT = 0.42; // 早く離したときの減速率（小ジャンプ）
+const STEP_TOL = 8; // これ以下の段差はそのまま登れる
+const GAP = -999; // 崖（穴）のセンチネル
+
+// コース生成：平地・登り・下り・崖をランダムに並べる。最初の6mは安全。
+function genCourse(): number[] {
+  const h: number[] = [];
+  for (let i = 0; i < 6; i++) h.push(BASE_H);
+  let level = 0;
+  while (h.length < 240) {
+    const r = Math.random();
+    if (r < 0.2) {
+      // 崖（1マス）→ 同じ高さに着地
+      h.push(GAP);
+      h.push(BASE_H + level * LEVEL_STEP);
+    } else if (r < 0.42 && level < 2) {
+      // 登り
+      level += 1;
+      const len = 2 + Math.floor(Math.random() * 2);
+      for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
+    } else if (r < 0.64 && level > 0) {
+      // 下り
+      level -= 1;
+      const len = 2 + Math.floor(Math.random() * 2);
+      for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
+    } else {
+      // 平地
+      const len = 2 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < len; k++) h.push(BASE_H + level * LEVEL_STEP);
+    }
+  }
+  return h;
+}
 
 function RunningTraining({
   config,
@@ -699,23 +742,22 @@ function RunningTraining({
 
   const firedRef = useRef(false);
 
-  // 崖（がけ）の配置をマウント時に生成。最初の5mは安全。
-  const gapsRef = useRef<Set<number>>(new Set());
-  if (gapsRef.current.size === 0) {
-    const gaps = new Set<number>();
-    let m = 6;
-    while (m < 300) {
-      gaps.add(m); // 1メートル幅の崖
-      m += 3 + Math.floor(Math.random() * 3); // 次の崖まで3〜5m
-    }
-    gapsRef.current = gaps;
+  // コースをマウント時に生成
+  const courseRef = useRef<number[]>([]);
+  if (courseRef.current.length === 0) {
+    courseRef.current = genCourse();
   }
-
-  const isGap = (m: number) => gapsRef.current.has(m);
+  const heightAt = (cell: number) => {
+    const c = courseRef.current;
+    if (cell < 0 || cell >= c.length) return BASE_H;
+    return c[cell];
+  };
+  const isGap = (cell: number) => heightAt(cell) === GAP;
 
   const g = useRef({
-    distance: 0,
-    y: 0, // 地面からの高さ（px）。マイナスは穴に落下中
+    camX: 0, // カメラ（コース）の進行（m）
+    charX: 0, // キャラのワールド位置（m）
+    yFeet: BASE_H, // 足の高さ（px）
     vy: 0,
     onGround: true,
     started: false,
@@ -723,9 +765,7 @@ function RunningTraining({
   });
 
   useEffect(() => {
-    // 実時間30msごとに、シミュレーション時間は0.015秒だけ進める。
-    // 全体（移動・ジャンプ・重力）が一律で約半分の速さに見える。
-    const DT = 0.015;
+    const DT = 0.03; // 30msごと（＝1秒に1メートル）
     const timer = window.setInterval(() => {
       const s = g.current;
 
@@ -733,45 +773,71 @@ function RunningTraining({
         return;
       }
 
-      // 右へ進む
-      s.distance += SPEED_MPS * DT;
+      // カメラは一定速度で進む
+      s.camX += SPEED_MPS * DT;
 
-      const groundHere = !isGap(Math.floor(s.distance));
+      // 前方の段差で前進がブロックされるか判定
+      const curCell = Math.floor(s.charX);
+      const nextCell = curCell + 1;
+      const frac = s.charX - curCell;
+      const nextGap = isGap(nextCell);
+      const nextH = nextGap ? -1 : heightAt(nextCell);
+      let blocked = false;
+      if (!nextGap && nextH - s.yFeet > STEP_TOL && frac > 0.45) {
+        blocked = true;
+      }
+      if (!blocked) {
+        s.charX += SPEED_MPS * DT;
+      }
 
-      // 地面に立っているのに足元が崖 → 落下開始
-      if (s.onGround && !groundHere) {
-        s.onGround = false;
-        s.vy = 0;
+      // 立っているセル
+      const standCell = Math.floor(s.charX + 0.001);
+      const standGap = isGap(standCell);
+      const groundH = standGap ? -1 : heightAt(standCell);
+
+      // 段差を降りる / 崖に出る → 落下開始
+      if (s.onGround) {
+        if (standGap) {
+          s.onGround = false;
+          s.vy = 0;
+        } else if (groundH < s.yFeet - 2) {
+          s.onGround = false;
+          s.vy = 0;
+        } else {
+          s.yFeet = groundH; // 同じ高さに吸着
+        }
       }
 
       // 空中の物理
       if (!s.onGround) {
         s.vy -= GRAVITY * DT;
-        s.y += s.vy * DT;
+        s.yFeet += s.vy * DT;
 
-        if (s.vy < 0) {
-          // 下降中
-          if (groundHere && s.y <= 0) {
-            s.y = 0;
-            s.vy = 0;
-            s.onGround = true;
-          } else if (!groundHere && s.y < -140) {
-            // 穴に落ちた → 終了
-            s.finished = true;
-            setFinished(true);
-            const meters = Math.floor(s.distance);
-            const points = meters < 6 ? 1 : meters < 20 ? 2 : 3;
-            setMessage(`${meters}メートル！ スタミナ +${points}`);
-            if (!firedRef.current) {
-              firedRef.current = true;
-              onClear(points);
-            }
-            return;
-          }
+        if (s.vy <= 0 && !standGap && s.yFeet <= groundH) {
+          s.yFeet = groundH;
+          s.vy = 0;
+          s.onGround = true;
         }
       }
 
-      setDistanceView(s.distance);
+      // 画面上のキャラ位置（px）
+      const screenX = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
+
+      // 終了判定：崖に落ちた or 引っかかって画面外
+      if (s.yFeet < -50 || screenX < -CHAR_SIZE) {
+        s.finished = true;
+        setFinished(true);
+        const meters = Math.max(0, Math.floor(s.charX));
+        const points = meters < 6 ? 1 : meters < 20 ? 2 : 3;
+        setMessage(`${meters}メートル！ スタミナ +${points}`);
+        if (!firedRef.current) {
+          firedRef.current = true;
+          onClear(points);
+        }
+        return;
+      }
+
+      setDistanceView(s.charX);
       setTick((t) => t + 1);
     }, 30);
 
@@ -784,26 +850,37 @@ function RunningTraining({
     }
     g.current.started = true;
     setStarted(true);
-    setMessage("ジャンプで崖をこえよう！");
+    setMessage("タップで小ジャンプ／長押しで大ジャンプ！");
   }
 
-  function jump() {
+  function pressJump() {
     const s = g.current;
-    if (!s.started || s.finished) {
+    if (!s.started) {
+      start();
+    }
+    if (s.finished) {
       return;
     }
     if (s.onGround) {
-      s.vy = JUMP_V;
+      s.vy = JUMP_VMAX;
       s.onGround = false;
     }
   }
 
-  const s = g.current;
-  const meters = Math.floor(distanceView);
+  function releaseJump() {
+    const s = g.current;
+    if (s.vy > 0) {
+      s.vy *= JUMP_CUT; // 早く離すと小さいジャンプ
+    }
+  }
 
-  // 表示するセル（メートル）の範囲
+  const s = g.current;
+  const meters = Math.max(0, Math.floor(distanceView));
+  const screenXChar = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
+
+  // 表示するセルの範囲
   const cells: number[] = [];
-  for (let c = Math.floor(s.distance) - 2; c <= Math.floor(s.distance) + 9; c++) {
+  for (let c = Math.floor(s.camX) - 2; c <= Math.floor(s.camX) + 10; c++) {
     if (c >= 0) {
       cells.push(c);
     }
@@ -815,10 +892,16 @@ function RunningTraining({
       <div className="note">{config.description}</div>
 
       <div
-        onMouseDown={jump}
+        onMouseDown={pressJump}
+        onMouseUp={releaseJump}
+        onMouseLeave={releaseJump}
         onTouchStart={(event) => {
           event.preventDefault();
-          jump();
+          pressJump();
+        }}
+        onTouchEnd={(event) => {
+          event.preventDefault();
+          releaseJump();
         }}
         style={{
           height: STAGE_H,
@@ -828,17 +911,18 @@ function RunningTraining({
           position: "relative",
           overflow: "hidden",
           cursor: "pointer",
-          // 草原：空→雲のような淡い水色から草の緑へ
+          userSelect: "none",
+          // 草原：空→草へ
           background:
             "linear-gradient(#aee4ff 0%, #c8efff 45%, #8ed861 45%, #74c948 100%)"
         }}
       >
-        {/* 遠くの雲 */}
+        {/* 雲 */}
         <div
           style={{
             position: "absolute",
-            top: 18,
-            left: 40,
+            top: 16,
+            left: 36,
             width: 60,
             height: 22,
             background: "rgba(255,255,255,0.85)",
@@ -848,8 +932,8 @@ function RunningTraining({
         <div
           style={{
             position: "absolute",
-            top: 34,
-            right: 50,
+            top: 32,
+            right: 48,
             width: 80,
             height: 24,
             background: "rgba(255,255,255,0.8)",
@@ -857,7 +941,7 @@ function RunningTraining({
           }}
         />
 
-        {/* 地面ブロック（崖は描かない） */}
+        {/* 地面ブロック（崖は描かない・段差は高さで表現） */}
         {cells.map((cell) =>
           isGap(cell) ? null : (
             <div
@@ -865,9 +949,9 @@ function RunningTraining({
               style={{
                 position: "absolute",
                 bottom: 0,
-                left: CHAR_X + (cell - s.distance) * PX_PER_M,
+                left: CHAR_BASE_X + (cell - s.camX) * PX_PER_M,
                 width: PX_PER_M + 1,
-                height: GROUND_H,
+                height: heightAt(cell),
                 background: "#7a4a25",
                 borderTop: "6px solid #59b13a",
                 boxSizing: "border-box"
@@ -880,11 +964,10 @@ function RunningTraining({
         <div
           style={{
             position: "absolute",
-            left: CHAR_X - CHAR_SIZE / 2,
-            bottom: GROUND_H + s.y,
+            left: screenXChar - CHAR_SIZE / 2,
+            bottom: s.yFeet,
             width: CHAR_SIZE,
-            height: CHAR_SIZE,
-            transition: "none"
+            height: CHAR_SIZE
           }}
         >
           <MonsterIcon color="red" size={CHAR_SIZE} />
@@ -910,7 +993,9 @@ function RunningTraining({
       <div className="title" style={{ marginTop: 12, fontSize: 18 }}>
         {message}
       </div>
-      <div className="note">5m以下→+1 / 6〜19m→+2 / 20m以上→+3</div>
+      <div className="note">
+        タップ＝小ジャンプ／長押し＝大ジャンプ　5m以下→+1 / 6〜19m→+2 / 20m以上→+3
+      </div>
 
       {!started && !finished && (
         <button className="button green" onClick={start}>
@@ -921,10 +1006,16 @@ function RunningTraining({
       {started && !finished && (
         <button
           className="button green"
-          onClick={jump}
+          onMouseDown={pressJump}
+          onMouseUp={releaseJump}
+          onMouseLeave={releaseJump}
           onTouchStart={(event) => {
             event.preventDefault();
-            jump();
+            pressJump();
+          }}
+          onTouchEnd={(event) => {
+            event.preventDefault();
+            releaseJump();
           }}
         >
           ジャンプ！
