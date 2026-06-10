@@ -41,7 +41,7 @@ const trainings: TrainingConfig[] = [
     type: "stamina",
     title: "ランニングトレーニング",
     description:
-      "「左」と「右」を交互にタップして走ろう！10秒間の歩数で成長量が変わるよ。",
+      "草原を自動で走るよ！タップでジャンプして、崖（がけ）に落ちないように何メートル進めるかな？",
     targetLabel: "スタミナ"
   }
 ];
@@ -673,7 +673,17 @@ function TapTraining({
   );
 }
 
-// ④ ランニング（スタミナ）：左右の足を交互にタップ。10秒の歩数で +1/+2/+3。
+// ④ ランニング（スタミナ）：マリオ風の横スクロール。自動で右に進み、タップでジャンプ。
+//    崖に落ちずに何メートル進めるか。5m以下→+1 / 6〜19m→+2 / 20m以上→+3。
+const PX_PER_M = 44; // 1メートルの表示ピクセル
+const SPEED_MPS = 1; // 1秒に1メートル進む
+const STAGE_H = 210; // ステージ高さ
+const GROUND_H = 50; // 地面の高さ
+const CHAR_X = 64; // キャラの画面X位置
+const CHAR_SIZE = 40;
+const GRAVITY = 430; // 重力 px/s^2
+const JUMP_V = 280; // ジャンプ初速 px/s（最高到達点 ≒ 91px、滞空 ≒ 1.3秒）
+
 function RunningTraining({
   config,
   onClear
@@ -683,60 +693,119 @@ function RunningTraining({
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
-  const [steps, setSteps] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [message, setMessage] = useState("「左」からスタート！");
+  const [distanceView, setDistanceView] = useState(0);
+  const [, setTick] = useState(0);
+  const [message, setMessage] = useState("タップでジャンプ！崖に落ちないでね");
 
-  const stepsRef = useRef(0);
-  const nextFootRef = useRef<"L" | "R">("L");
   const firedRef = useRef(false);
 
-  useEffect(() => {
-    if (!started || finished) {
-      return;
+  // 崖（がけ）の配置をマウント時に生成。最初の5mは安全。
+  const gapsRef = useRef<Set<number>>(new Set());
+  if (gapsRef.current.size === 0) {
+    const gaps = new Set<number>();
+    let m = 6;
+    while (m < 300) {
+      gaps.add(m); // 1メートル幅の崖
+      m += 3 + Math.floor(Math.random() * 3); // 次の崖まで3〜5m
     }
+    gapsRef.current = gaps;
+  }
 
+  const isGap = (m: number) => gapsRef.current.has(m);
+
+  const g = useRef({
+    distance: 0,
+    y: 0, // 地面からの高さ（px）。マイナスは穴に落下中
+    vy: 0,
+    onGround: true,
+    started: false,
+    finished: false
+  });
+
+  useEffect(() => {
+    // 実時間30msごとに、シミュレーション時間は0.015秒だけ進める。
+    // 全体（移動・ジャンプ・重力）が一律で約半分の速さに見える。
+    const DT = 0.015;
     const timer = window.setInterval(() => {
-      setTimeLeft((prev) => {
-        const next = Number((prev - 0.1).toFixed(1));
+      const s = g.current;
 
-        if (next <= 0) {
-          window.clearInterval(timer);
-          setFinished(true);
+      if (!s.started || s.finished) {
+        return;
+      }
 
-          if (!firedRef.current) {
-            firedRef.current = true;
-            const c = stepsRef.current;
-            const points = c <= 15 ? 1 : c <= 30 ? 2 : 3;
-            onClear(points);
+      // 右へ進む
+      s.distance += SPEED_MPS * DT;
+
+      const groundHere = !isGap(Math.floor(s.distance));
+
+      // 地面に立っているのに足元が崖 → 落下開始
+      if (s.onGround && !groundHere) {
+        s.onGround = false;
+        s.vy = 0;
+      }
+
+      // 空中の物理
+      if (!s.onGround) {
+        s.vy -= GRAVITY * DT;
+        s.y += s.vy * DT;
+
+        if (s.vy < 0) {
+          // 下降中
+          if (groundHere && s.y <= 0) {
+            s.y = 0;
+            s.vy = 0;
+            s.onGround = true;
+          } else if (!groundHere && s.y < -140) {
+            // 穴に落ちた → 終了
+            s.finished = true;
+            setFinished(true);
+            const meters = Math.floor(s.distance);
+            const points = meters < 6 ? 1 : meters < 20 ? 2 : 3;
+            setMessage(`${meters}メートル！ スタミナ +${points}`);
+            if (!firedRef.current) {
+              firedRef.current = true;
+              onClear(points);
+            }
+            return;
           }
-
-          return 0;
         }
+      }
 
-        return next;
-      });
-    }, 100);
+      setDistanceView(s.distance);
+      setTick((t) => t + 1);
+    }, 30);
 
     return () => window.clearInterval(timer);
-  }, [started, finished, onClear]);
+  }, [onClear]);
 
-  function step(foot: "L" | "R") {
-    if (finished) {
+  function start() {
+    if (g.current.started) {
       return;
     }
+    g.current.started = true;
+    setStarted(true);
+    setMessage("ジャンプで崖をこえよう！");
+  }
 
-    if (!started) {
-      setStarted(true);
+  function jump() {
+    const s = g.current;
+    if (!s.started || s.finished) {
+      return;
     }
+    if (s.onGround) {
+      s.vy = JUMP_V;
+      s.onGround = false;
+    }
+  }
 
-    if (foot === nextFootRef.current) {
-      stepsRef.current += 1;
-      setSteps(stepsRef.current);
-      nextFootRef.current = nextFootRef.current === "L" ? "R" : "L";
-      setMessage(nextFootRef.current === "L" ? "つぎは「左」！" : "つぎは「右」！");
-    } else {
-      setMessage("交互にタップ！");
+  const s = g.current;
+  const meters = Math.floor(distanceView);
+
+  // 表示するセル（メートル）の範囲
+  const cells: number[] = [];
+  for (let c = Math.floor(s.distance) - 2; c <= Math.floor(s.distance) + 9; c++) {
+    if (c >= 0) {
+      cells.push(c);
     }
   }
 
@@ -746,46 +815,121 @@ function RunningTraining({
       <div className="note">{config.description}</div>
 
       <div
+        onMouseDown={jump}
+        onTouchStart={(event) => {
+          event.preventDefault();
+          jump();
+        }}
         style={{
-          height: 160,
+          height: STAGE_H,
           border: "4px solid #2b1b10",
           borderRadius: 24,
           marginTop: 16,
-          background: "linear-gradient(#eafff1, #d6f5df)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center"
+          position: "relative",
+          overflow: "hidden",
+          cursor: "pointer",
+          // 草原：空→雲のような淡い水色から草の緑へ
+          background:
+            "linear-gradient(#aee4ff 0%, #c8efff 45%, #8ed861 45%, #74c948 100%)"
         }}
       >
-        <div style={{ fontSize: 30, fontWeight: 900, color: "#34b85a" }}>
-          {timeLeft.toFixed(1)} 秒
+        {/* 遠くの雲 */}
+        <div
+          style={{
+            position: "absolute",
+            top: 18,
+            left: 40,
+            width: 60,
+            height: 22,
+            background: "rgba(255,255,255,0.85)",
+            borderRadius: 999
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 34,
+            right: 50,
+            width: 80,
+            height: 24,
+            background: "rgba(255,255,255,0.8)",
+            borderRadius: 999
+          }}
+        />
+
+        {/* 地面ブロック（崖は描かない） */}
+        {cells.map((cell) =>
+          isGap(cell) ? null : (
+            <div
+              key={cell}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: CHAR_X + (cell - s.distance) * PX_PER_M,
+                width: PX_PER_M + 1,
+                height: GROUND_H,
+                background: "#7a4a25",
+                borderTop: "6px solid #59b13a",
+                boxSizing: "border-box"
+              }}
+            />
+          )
+        )}
+
+        {/* キャラクター */}
+        <div
+          style={{
+            position: "absolute",
+            left: CHAR_X - CHAR_SIZE / 2,
+            bottom: GROUND_H + s.y,
+            width: CHAR_SIZE,
+            height: CHAR_SIZE,
+            transition: "none"
+          }}
+        >
+          <MonsterIcon color="red" size={CHAR_SIZE} />
         </div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: "#2b1b10" }}>
-          {steps} 歩
+
+        {/* 距離表示 */}
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 12,
+            background: "rgba(43,27,16,0.8)",
+            color: "white",
+            borderRadius: 999,
+            padding: "4px 12px",
+            fontWeight: 900
+          }}
+        >
+          {meters} m
         </div>
       </div>
 
       <div className="title" style={{ marginTop: 12, fontSize: 18 }}>
         {message}
       </div>
-      <div className="note">15歩以下→+1 / 16〜30歩→+2 / 31歩以上→+3</div>
+      <div className="note">5m以下→+1 / 6〜19m→+2 / 20m以上→+3</div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 12,
-          marginTop: 6
-        }}
-      >
-        <button className="button green" onClick={() => step("L")}>
-          左
+      {!started && !finished && (
+        <button className="button green" onClick={start}>
+          スタート
         </button>
-        <button className="button blue" onClick={() => step("R")}>
-          右
+      )}
+
+      {started && !finished && (
+        <button
+          className="button green"
+          onClick={jump}
+          onTouchStart={(event) => {
+            event.preventDefault();
+            jump();
+          }}
+        >
+          ジャンプ！
         </button>
-      </div>
+      )}
     </div>
   );
 }
