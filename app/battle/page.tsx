@@ -362,7 +362,13 @@ export default function BattlePage() {
             }}
           >
             <div>
-              <MonsterIcon color={monster.egg_color} size={105} />
+              <MonsterIcon
+                color={monster.egg_color}
+                size={105}
+                stage={monster.stage}
+                speed={monster.speed}
+                technique={monster.technique}
+              />
               <div style={{ fontWeight: 900, color: "#2b1b10" }}>
                 {monster.name}
               </div>
