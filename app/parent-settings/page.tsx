@@ -9,6 +9,10 @@ export default function ParentSettingsPage() {
   const router = useRouter();
 
   const [childId, setChildId] = useState("");
+  const [userId, setUserId] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [childName, setChildName] = useState("");
+  const [savingNames, setSavingNames] = useState(false);
   const [missionTitle, setMissionTitle] = useState("靴をそろえる");
   const [missionDescription, setMissionDescription] =
     useState("今日、帰ってきたら靴をそろえよう。");
@@ -29,9 +33,11 @@ export default function ParentSettingsPage() {
       return;
     }
 
+    setUserId(userId);
+
     const { data: child } = await supabase
       .from("children")
-      .select("id")
+      .select("id, name")
       .eq("parent_id", userId)
       .limit(1)
       .single();
@@ -42,12 +48,53 @@ export default function ParentSettingsPage() {
     }
 
     setChildId(child.id);
+    setChildName(child.name || "");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", userId)
+      .maybeSingle();
+
+    setParentName(profile?.name || "");
 
     const savedPin = localStorage.getItem("parentPin");
 
     if (savedPin) {
       setPin(savedPin);
     }
+  }
+
+  async function saveNames() {
+    if (savingNames) {
+      return;
+    }
+
+    if (!parentName.trim() || !childName.trim()) {
+      alert("保護者名と子どもの名前を入力してください");
+      return;
+    }
+
+    setSavingNames(true);
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ name: parentName.trim() })
+      .eq("id", userId);
+
+    const { error: childError } = await supabase
+      .from("children")
+      .update({ name: childName.trim() })
+      .eq("id", childId);
+
+    if (profileError || childError) {
+      alert((profileError || childError)?.message);
+      setSavingNames(false);
+      return;
+    }
+
+    alert("名前を変更しました");
+    setSavingNames(false);
   }
 
   async function saveMission() {
@@ -159,6 +206,34 @@ export default function ParentSettingsPage() {
             <div className="note">
               子どもが勝手に達成できないよう、保護者承認時に使用します。
             </div>
+          </div>
+
+          <div className="card">
+            <div className="title">なまえの変更</div>
+
+            <label className="label">保護者の名前</label>
+            <input
+              className="input"
+              value={parentName}
+              onChange={(event) => setParentName(event.target.value)}
+              maxLength={20}
+            />
+
+            <label className="label">子どもの名前</label>
+            <input
+              className="input"
+              value={childName}
+              onChange={(event) => setChildName(event.target.value)}
+              maxLength={20}
+            />
+
+            <button
+              className="button"
+              onClick={saveNames}
+              disabled={savingNames}
+            >
+              {savingNames ? "保存中…" : "名前を保存"}
+            </button>
           </div>
 
           <button className="button orange" onClick={() => router.push("/mission")}>
