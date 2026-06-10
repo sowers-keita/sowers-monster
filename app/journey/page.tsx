@@ -180,7 +180,13 @@ export default function JourneyPage() {
                 transition: "2s ease"
               }}
             >
-              <MonsterIcon color={monster.egg_color} size={130} />
+              <MonsterIcon
+                color={monster.egg_color}
+                size={130}
+                stage={monster.stage}
+                speed={monster.speed}
+                technique={monster.technique}
+              />
             </div>
 
             <div
