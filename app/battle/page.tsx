@@ -67,6 +67,22 @@ const opponents: Opponent[] = [
   }
 ];
 
+type RealMonsterRow = {
+  id: string;
+  name: string;
+  egg_color: EggColor;
+  power: number;
+  stamina: number;
+  stamina_max: number;
+  speed: number;
+  technique: number;
+  child_id: string;
+  children?: {
+    name: string;
+    classrooms?: { name: string } | null;
+  } | null;
+};
+
 export default function BattlePage() {
   const router = useRouter();
 
@@ -94,16 +110,45 @@ export default function BattlePage() {
       return;
     }
 
-    const randomOpponent =
-      opponents[Math.floor(Math.random() * opponents.length)];
-
     setMonster(current);
-    setOpponent(randomOpponent);
     setPlayerHp(Math.max(10, current.stamina_max + current.stamina));
-    setEnemyHp(randomOpponent.hp);
-    setLog(
-      `${randomOpponent.classroom}の ${randomOpponent.name}さん とマッチング！`
-    );
+
+    // 他の登録ユーザーのモンスターから対戦相手を探す
+    const { data: others } = await supabase
+      .from("monsters")
+      .select(
+        `id, name, egg_color, power, stamina, stamina_max, speed, technique, child_id,
+         children ( name, classrooms ( name ) )`
+      )
+      .eq("is_active", true)
+      .neq("child_id", current.child_id);
+
+    let chosen: Opponent;
+
+    if (others && others.length > 0) {
+      const pick = others[
+        Math.floor(Math.random() * others.length)
+      ] as unknown as RealMonsterRow;
+
+      chosen = {
+        name: pick.children?.name || "だれか",
+        classroom: pick.children?.classrooms?.name || "Sowers Club",
+        monsterName: pick.name,
+        eggColor: pick.egg_color,
+        hp: Math.max(10, pick.stamina_max + pick.stamina),
+        power: Math.max(1, pick.power + 10),
+        stamina: pick.stamina,
+        speed: pick.speed + 10,
+        technique: pick.technique + 10
+      };
+    } else {
+      // まだ他の登録ユーザーがいないときはCPUと対戦
+      chosen = opponents[Math.floor(Math.random() * opponents.length)];
+    }
+
+    setOpponent(chosen);
+    setEnemyHp(chosen.hp);
+    setLog(`${chosen.classroom}の ${chosen.name}さん とマッチング！`);
 
     // 当日のバトル回数を数える
     const start = new Date();
