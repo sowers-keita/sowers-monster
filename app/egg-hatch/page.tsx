@@ -38,6 +38,7 @@ function EggHatchInner() {
 
   const [hatched, setHatched] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(monsterByEgg[egg].name);
 
   async function hatch() {
     setSaving(true);
@@ -65,10 +66,11 @@ function EggHatchInner() {
     }
 
     const monsterData = monsterByEgg[egg];
+    const finalName = name.trim() || monsterData.name;
 
     const { error } = await supabase.from("monsters").insert({
       child_id: child.id,
-      name: monsterData.name,
+      name: finalName,
       egg_color: egg,
       stage: "スタート期",
       power: 0,
@@ -111,8 +113,20 @@ function EggHatchInner() {
             <div className="title" style={{ marginTop: 20 }}>
               卵が動いている…
             </div>
+
+            <label className="label" style={{ textAlign: "left" }}>
+              モンスターの名前をつけよう
+            </label>
+            <input
+              className="input"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={12}
+              placeholder="例：もんちゃん"
+            />
+
             <button className="button orange" onClick={hatch} disabled={saving}>
-              {saving ? "保存中…" : "卵を見守る"}
+              {saving ? "保存中…" : "この名前で生まれる"}
             </button>
           </>
         ) : (
