@@ -249,3 +249,112 @@ button:active {
   height: 100%;
   background: #ff7a00;
 }
+
+/* ===== ホームのモンスター・アニメーション（デジモン風） ===== */
+.monster-stage {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.monster-walker {
+  position: relative;
+  width: 130px;
+  animation: monster-walk 7s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.monster-hopper {
+  animation: monster-hop 2.4s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.monster-shadow {
+  width: 90px;
+  height: 16px;
+  margin: -6px auto 0;
+  background: rgba(43, 27, 16, 0.18);
+  border-radius: 50%;
+  animation: monster-shadow 2.4s ease-in-out infinite;
+}
+
+/* 左右に歩く。向きが変わるとき左右反転して向きを変える */
+@keyframes monster-walk {
+  0% {
+    transform: translateX(-80px) scaleX(1);
+  }
+  45% {
+    transform: translateX(80px) scaleX(1);
+  }
+  50% {
+    transform: translateX(80px) scaleX(-1);
+  }
+  95% {
+    transform: translateX(-80px) scaleX(-1);
+  }
+  100% {
+    transform: translateX(-80px) scaleX(1);
+  }
+}
+
+/* 歩きながら小さく弾み、ときどき大きくジャンプ＆喜ぶ */
+@keyframes monster-hop {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  15% {
+    transform: translateY(-8px) rotate(-3deg);
+  }
+  30% {
+    transform: translateY(0) rotate(0deg);
+  }
+  45% {
+    transform: translateY(-8px) rotate(3deg);
+  }
+  60% {
+    transform: translateY(0) rotate(0deg);
+  }
+  /* 大ジャンプ（うれしい！） */
+  75% {
+    transform: translateY(-34px) rotate(0deg);
+  }
+  88% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+/* 影はジャンプに合わせて縮む */
+@keyframes monster-shadow {
+  0%,
+  30%,
+  60%,
+  88%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  15%,
+  45% {
+    transform: scale(0.82);
+    opacity: 0.7;
+  }
+  75% {
+    transform: scale(0.55);
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monster-walker,
+  .monster-hopper,
+  .monster-shadow {
+    animation: none;
+  }
+}
