@@ -683,7 +683,7 @@ function TapTraining({
 // ④ ランニング（スタミナ）：マリオ風の横スクロール・プラットフォーマー。
 //    自動で右に進む。タップで小ジャンプ、長押しで大ジャンプ。
 //    崖に落ちる or 段差に引っかかって画面外に出ると終了。進んだメートルで判定。
-//    5m以下→+1 / 6〜19m→+2 / 20m以上→+3。
+//    10m以下→+1 / 11〜30m→+2 / 31m以上→+3。5mごとにスピード1.25倍。
 const PX_PER_M = 44; // 1メートルの表示ピクセル
 const SPEED_MPS = 1.3; // 進む速さ（少し速め）
 const STAGE_H = 220; // ステージ高さ
@@ -775,8 +775,11 @@ function RunningTraining({
         return;
       }
 
-      // カメラは一定速度で進む
-      s.camX += SPEED_MPS * DT;
+      // 5mごとにスピードが1.25倍ずつ速くなる
+      const sp = SPEED_MPS * Math.pow(1.25, Math.floor(s.charX / 5));
+
+      // カメラが進む
+      s.camX += sp * DT;
 
       // 前方の段差で前進がブロックされるか判定
       const curCell = Math.floor(s.charX);
@@ -789,7 +792,7 @@ function RunningTraining({
         blocked = true;
       }
       if (!blocked) {
-        s.charX += SPEED_MPS * DT;
+        s.charX += sp * DT;
       }
 
       // 立っているセル
@@ -830,7 +833,7 @@ function RunningTraining({
         s.finished = true;
         setFinished(true);
         const meters = Math.max(0, Math.floor(s.charX));
-        const points = meters < 6 ? 1 : meters < 20 ? 2 : 3;
+        const points = meters <= 10 ? 1 : meters <= 30 ? 2 : 3;
         setMessage(`${meters}メートル！ スタミナ +${points}`);
         if (!firedRef.current) {
           firedRef.current = true;
@@ -996,7 +999,7 @@ function RunningTraining({
         {message}
       </div>
       <div className="note">
-        タップ＝小ジャンプ／長押し＝大ジャンプ　5m以下→+1 / 6〜19m→+2 / 20m以上→+3
+        タップ＝小ジャンプ／長押し＝大ジャンプ　10m以下→+1 / 11〜30m→+2 / 31m以上→+3
       </div>
 
       {!started && !finished && (
