@@ -46,7 +46,7 @@ button:active {
 }
 
 .header {
-  background: #ff7a00;
+  background: #34b85a;
   color: white;
   border-bottom: 5px solid #2b1b10;
   padding: 14px;
@@ -264,12 +264,12 @@ button:active {
 .monster-walker {
   position: relative;
   width: 130px;
-  animation: monster-walk 7s ease-in-out infinite;
+  animation: monster-walk 14s ease-in-out infinite;
   transform-origin: bottom center;
 }
 
 .monster-hopper {
-  animation: monster-hop 2.4s ease-in-out infinite;
+  animation: monster-hop 4.8s ease-in-out infinite;
   transform-origin: bottom center;
 }
 
@@ -279,7 +279,7 @@ button:active {
   margin: -6px auto 0;
   background: rgba(43, 27, 16, 0.18);
   border-radius: 50%;
-  animation: monster-shadow 2.4s ease-in-out infinite;
+  animation: monster-shadow 4.8s ease-in-out infinite;
 }
 
 /* 左右に歩く。向きが変わるとき左右反転して向きを変える */
