@@ -32,9 +32,19 @@ export default function HomePage() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [happy, setHappy] = useState(false);
 
   useEffect(() => {
     loadHome();
+  }, []);
+
+  // ジャンプのタイミングで、ときどき「喜ぶ顔」に
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      window.setTimeout(() => setHappy(true), 3300);
+      window.setTimeout(() => setHappy(false), 4300);
+    }, 4800);
+    return () => window.clearInterval(id);
   }, []);
 
   async function loadHome() {
@@ -144,7 +154,7 @@ export default function HomePage() {
 
               <div className="monster-walker">
                 <div className="monster-hopper">
-                  <MonsterIcon color={monster.egg_color} size={130} />
+                  <MonsterIcon color={monster.egg_color} size={130} happy={happy} />
                 </div>
                 <div className="monster-shadow" />
               </div>
