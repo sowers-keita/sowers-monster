@@ -134,6 +134,14 @@ export default function HomePage() {
         <div className="content" style={{ paddingBottom: 92 }}>
           <div className="card" style={{ textAlign: "center", background: "#fff1cf" }}>
             <div className="monster-stage">
+              {/* 背景：雲・山・うっすら海・草原 */}
+              <div className="scene-cloud" style={{ top: 14, left: 28 }} />
+              <div className="scene-cloud" style={{ top: 26, right: 30, width: 50 }} />
+              <div className="scene-mountain left" />
+              <div className="scene-mountain mid" />
+              <div className="scene-mountain right" />
+              <div className="scene-grass" />
+
               <div className="monster-walker">
                 <div className="monster-hopper">
                   <MonsterIcon color={monster.egg_color} size={130} />
