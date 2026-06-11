@@ -642,7 +642,7 @@ export default function VersusPage() {
         </div>
       </div>
 
-      <BottomNav active="versus" />
+      <BottomNav active="battle" />
     </main>
   );
 }
