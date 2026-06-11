@@ -266,7 +266,7 @@ export default function TrainingPage() {
           )}
 
           {mode === "playing" && selected === "running" && (
-            <RunningTraining config={config} onClear={onClear} />
+            <RunningTraining config={config} onClear={onClear} monster={monster} />
           )}
 
           {mode === "playing" && selected === "stop" && (
@@ -1082,7 +1082,8 @@ function genCourse(): number[] {
 
 function RunningTraining({
   config,
-  onClear
+  onClear,
+  monster
 }: {
   config: TrainingConfig;
   onClear: (
@@ -1091,6 +1092,7 @@ function RunningTraining({
     result?: string,
     score?: number
   ) => void;
+  monster: ActiveMonster;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -1361,7 +1363,15 @@ function RunningTraining({
             height: CHAR_SIZE
           }}
         >
-          <MonsterIcon color="red" size={CHAR_SIZE} flip />
+          <MonsterIcon
+            color={monster.egg_color}
+            size={CHAR_SIZE}
+            stage={monster.stage}
+            speed={monster.speed}
+            technique={monster.technique}
+            happy={!s.onGround}
+            flip
+          />
         </div>
 
         {/* 距離表示 */}
