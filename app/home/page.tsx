@@ -240,6 +240,34 @@ export default function HomePage() {
           </div>
 
           <div className="card">
+            <div className="title">バトル情報</div>
+
+            <div
+              style={{
+                background: "#fff1cf",
+                border: "3px solid #2b1b10",
+                borderRadius: 16,
+                padding: 14,
+                textAlign: "center",
+                fontWeight: 900
+              }}
+            >
+              戦闘力
+              <div style={{ fontSize: 34, color: "#ff4b35" }}>
+                {monster.battle_power}
+              </div>
+            </div>
+          </div>
+
+          <button className="button red" onClick={() => router.push("/battle")}>
+            バトル
+          </button>
+
+          <button className="button blue" onClick={() => router.push("/ranking")}>
+            ランキング
+          </button>
+
+          <div className="card">
             <div className="title">ステータス</div>
 
             <Status
@@ -271,36 +299,12 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="card">
-            <div className="title">バトル情報</div>
-
-            <div
-              style={{
-                background: "#fff1cf",
-                border: "3px solid #2b1b10",
-                borderRadius: 16,
-                padding: 14,
-                textAlign: "center",
-                fontWeight: 900
-              }}
-            >
-              戦闘力
-              <div style={{ fontSize: 34, color: "#ff4b35" }}>
-                {monster.battle_power}
-              </div>
-            </div>
-          </div>
-
           <button className="button" onClick={() => router.push("/mission")}>
             ミッション
           </button>
 
           <button className="button orange" onClick={() => router.push("/training")}>
             トレーニング
-          </button>
-
-          <button className="button red" onClick={() => router.push("/battle")}>
-            バトル
           </button>
 
           <button className="button blue" onClick={() => router.push("/inventory")}>
