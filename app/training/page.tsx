@@ -23,8 +23,7 @@ const trainings: TrainingConfig[] = [
     type: "friend",
     stat: "power",
     title: "連打トレーニング",
-    description:
-      "10秒間でできるだけたくさんタップ！回数が多いほどパワーがアップするよ。",
+    description: "10秒間でできるだけたくさんタップ！80回いじょうで パワー +1。",
     targetLabel: "パワー"
   },
   {
@@ -32,7 +31,7 @@ const trainings: TrainingConfig[] = [
     stat: "stamina",
     title: "ランニングトレーニング",
     description:
-      "草原を自動で走るよ！タップで小ジャンプ・長押しで大ジャンプ。崖に落ちずに何メートル進めるかな？",
+      "草原を100メートル走りきろう！タップで小ジャンプ・長押しで大ジャンプ。ゴールで スタミナ +1。",
     targetLabel: "スタミナ"
   },
   {
@@ -40,7 +39,7 @@ const trainings: TrainingConfig[] = [
     stat: "speed",
     title: "ストップトレーニング",
     description:
-      "動くバーを真ん中の緑ゾーンで何回止められるかな？成功するほどバーが速くなる！スピードが上がるよ。",
+      "動くバーを緑ゾーンで れんぞく10回 止めよう！成功するほど速くなる。10連続で スピード +1！",
     targetLabel: "スピード"
   },
   {
@@ -48,10 +47,16 @@ const trainings: TrainingConfig[] = [
     stat: "technique",
     title: "糸通しトレーニング",
     description:
-      "長押しで上昇、はなすと下降。流れてくる壁のすき間を通ろう。1回でもぶつかったら終わり！テクニックが上がるよ。",
+      "長押しで上昇、はなすと下降。すき間を20こ通ると テクニック +1。1回でもぶつかったら おしまい！",
     targetLabel: "テクニック"
   }
 ];
+
+// トレーニングは1日それぞれ1回まで（localStorageで記録）
+function trainDoneKey(childId: string, type: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  return `swm_train_${childId}_${type}_${today}`;
+}
 
 export default function TrainingPage() {
   const router = useRouter();
@@ -60,6 +65,7 @@ export default function TrainingPage() {
   const [selected, setSelected] = useState<TrainingType>("friend");
   const [mode, setMode] = useState<"menu" | "playing" | "clear">("menu");
   const [earned, setEarned] = useState(0);
+  const [doneToday, setDoneToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadMonster();
@@ -74,52 +80,61 @@ export default function TrainingPage() {
     }
 
     setMonster(current);
+
+    const d: Record<string, boolean> = {};
+    for (const t of ["friend", "running", "stop", "thread"]) {
+      d[t] = localStorage.getItem(trainDoneKey(current.child_id, t)) === "1";
+    }
+    setDoneToday(d);
   }
 
   const config = useMemo(() => {
     return trainings.find((item) => item.type === selected) || trainings[0];
   }, [selected]);
 
+  // amount > 0 で成功（その能力を +1）。0 は失敗（何ももらえない）。
   async function onClear(amount: number) {
     if (!monster) {
       return;
     }
 
-    const update: Partial<ActiveMonster> = {};
+    const success = amount > 0;
 
-    if (config.stat === "power") {
-      update.power = Math.min(monster.power + amount, monster.power_max);
+    if (success) {
+      const update: Partial<ActiveMonster> = {};
+
+      if (config.stat === "power") {
+        update.power = Math.min(monster.power + 1, monster.power_max);
+      }
+      if (config.stat === "technique") {
+        update.technique = Math.min(
+          monster.technique + 1,
+          monster.technique_max
+        );
+      }
+      if (config.stat === "speed") {
+        update.speed = Math.min(monster.speed + 1, monster.speed_max);
+      }
+      if (config.stat === "stamina") {
+        update.stamina = Math.min(monster.stamina + 1, monster.stamina_max);
+      }
+
+      const { error } = await supabase
+        .from("monsters")
+        .update(update)
+        .eq("id", monster.id);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      setMonster({ ...monster, ...update } as ActiveMonster);
+      localStorage.setItem(trainDoneKey(monster.child_id, selected), "1");
+      setDoneToday((prev) => ({ ...prev, [selected]: true }));
     }
 
-    if (config.stat === "technique") {
-      update.technique = Math.min(monster.technique + amount, monster.technique_max);
-    }
-
-    if (config.stat === "speed") {
-      update.speed = Math.min(monster.speed + amount, monster.speed_max);
-    }
-
-    if (config.stat === "stamina") {
-      update.stamina = Math.min(monster.stamina + amount, monster.stamina_max);
-    }
-
-    const { error } = await supabase
-      .from("monsters")
-      .update(update)
-      .eq("id", monster.id);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    const nextMonster = {
-      ...monster,
-      ...update
-    } as ActiveMonster;
-
-    setMonster(nextMonster);
-    setEarned(amount);
+    setEarned(success ? 1 : 0);
     setMode("clear");
   }
 
@@ -147,27 +162,44 @@ export default function TrainingPage() {
           {mode === "menu" && (
             <>
               <div className="card" style={{ textAlign: "center" }}>
-                <MonsterIcon color={monster.egg_color} size={120} />
+                <MonsterIcon
+                  color={monster.egg_color}
+                  size={120}
+                  stage={monster.stage}
+                  speed={monster.speed}
+                  technique={monster.technique}
+                />
                 <div className="title" style={{ marginTop: 10 }}>
                   どのトレーニングをする？
                 </div>
                 <div className="note">
-                  種で上がった限界値まで、トレーニングで現在値を伸ばします。
+                  クリアすると のうりょくが +1。1日 それぞれ 1回までだよ。
                 </div>
               </div>
 
-              {trainings.map((item) => (
-                <button
-                  key={item.type}
-                  className="button orange"
-                  onClick={() => {
-                    setSelected(item.type);
-                    setMode("playing");
-                  }}
-                >
-                  {item.title}
-                </button>
-              ))}
+              {trainings.map((item) => {
+                const done = doneToday[item.type];
+                return (
+                  <button
+                    key={item.type}
+                    className={done ? "button gray" : "button orange"}
+                    onClick={() => {
+                      if (done) {
+                        alert(
+                          "この トレーニングは きょう もう できたよ。また あした！"
+                        );
+                        return;
+                      }
+                      setSelected(item.type);
+                      setMode("playing");
+                    }}
+                  >
+                    {done ? "✓ " : ""}
+                    {item.title}
+                    {done ? "（きょう おわり）" : ""}
+                  </button>
+                );
+              })}
             </>
           )}
 
@@ -189,11 +221,30 @@ export default function TrainingPage() {
 
           {mode === "clear" && (
             <div className="card" style={{ textAlign: "center" }}>
-              <MonsterIcon color={monster.egg_color} size={120} />
-              <div className="title">{config.targetLabel} +{earned}！</div>
-              <div className="note">
-                {config.targetLabel}が上がりました。ホームで確認しましょう。
-              </div>
+              <MonsterIcon
+                color={monster.egg_color}
+                size={120}
+                stage={monster.stage}
+                speed={monster.speed}
+                technique={monster.technique}
+                happy={earned > 0}
+                expression={earned > 0 ? "happy" : "sad"}
+              />
+              {earned > 0 ? (
+                <>
+                  <div className="title">{config.targetLabel} +1！</div>
+                  <div className="note">
+                    よくがんばったね！{config.targetLabel}が ふえたよ。
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="title">ざんねん…</div>
+                  <div className="note">
+                    もくひょうに とどかなかったよ。また ちょうせんしてね！
+                  </div>
+                </>
+              )}
 
               <button className="button" onClick={() => router.push("/home")}>
                 ホームへ戻る
@@ -203,7 +254,7 @@ export default function TrainingPage() {
                 className="button orange"
                 onClick={() => setMode("menu")}
               >
-                もう一度トレーニング
+                メニューへ
               </button>
             </div>
           )}
@@ -235,7 +286,9 @@ function PowerTraining({
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [message, setMessage] = useState("ストップでスタート！");
-  const [fx, setFx] = useState<{ id: number; x: number }[]>([]);
+  const [fx, setFx] = useState<{ id: number; x: number; rainbow?: boolean }[]>(
+    []
+  );
   const fxId = useRef(0);
 
   // バーの動き（常に動く）
@@ -280,9 +333,8 @@ function PowerTraining({
 
           if (!firedRef.current) {
             firedRef.current = true;
-            const c = successRef.current;
-            const points = c <= 3 ? 1 : c <= 5 ? 2 : 3;
-            onClear(points);
+            // 10連続できなかった → 失敗
+            onClear(0);
           }
 
           return 0;
@@ -309,15 +361,29 @@ function PowerTraining({
     if (pos >= 38 && pos <= 62) {
       successRef.current += 1;
       setSuccess(successRef.current);
-      speedRef.current += 0.5;
-      setMessage("ナイスストップ！");
+      speedRef.current += 0.4;
 
-      // 成功エフェクト（止めた位置で光る）
+      const reached = successRef.current >= 10;
+
+      // 成功エフェクト（10連続は虹色）
       const id = fxId.current++;
-      setFx((f) => [...f, { id, x: pos }]);
-      window.setTimeout(() => setFx((f) => f.filter((e) => e.id !== id)), 550);
+      setFx((f) => [...f, { id, x: pos, rainbow: reached }]);
+      window.setTimeout(() => setFx((f) => f.filter((e) => e.id !== id)), 650);
+
+      if (reached) {
+        setMessage("10れんぞく！ スピード +1！");
+        setFinished(true);
+        if (!firedRef.current) {
+          firedRef.current = true;
+          onClear(1);
+        }
+      } else {
+        setMessage(`${successRef.current}れんぞく！`);
+      }
     } else {
-      setMessage("おしい！");
+      successRef.current = 0;
+      setSuccess(0);
+      setMessage("れんぞく リセット…");
     }
   }
 
@@ -376,7 +442,7 @@ function PowerTraining({
             }}
           >
             <span className="fx-ring" />
-            <SparkBurst tier={2} />
+            <SparkBurst tier={e.rainbow ? 4 : 2} />
           </div>
         ))}
       </div>
@@ -386,9 +452,9 @@ function PowerTraining({
       </div>
 
       <div className="note">
-        のこり {timeLeft.toFixed(1)} 秒 ・ 成功 {success} 回
+        のこり {timeLeft.toFixed(1)} 秒 ・ れんぞく {success} / 10
       </div>
-      <div className="note">3回以下→+1 / 4・5回→+2 / 6回以上→+3</div>
+      <div className="note">れんぞく10回で スピード +1！</div>
 
       <button className="button red" onClick={stop}>
         {started ? "ストップ！" : "スタート（ストップ！）"}
@@ -486,12 +552,20 @@ function ThreadTraining({
 
       setPassedView(s.passed);
 
+      // 20こ通過で成功！
+      if (s.passed >= 20) {
+        s.finished = true;
+        setFinished(true);
+        setMessage("20こ クリア！ テクニック +1！");
+        onClear(1);
+        return;
+      }
+
       if (hit) {
         s.finished = true;
         setFinished(true);
-        const p = s.passed <= 3 ? 1 : s.passed <= 6 ? 2 : 3;
-        setMessage(`ぶつかった！ ${s.passed}回通過 → テクニック +${p}`);
-        onClear(p);
+        setMessage(`ぶつかった！ ${s.passed}こ 通過（20こで せいこう）`);
+        onClear(0);
         return;
       }
 
@@ -580,7 +654,7 @@ function ThreadTraining({
         {message}
       </div>
       <div className="note">通過：{passedView} 回</div>
-      <div className="note">0〜3→+1 / 4〜6→+2 / 7以上→+3</div>
+      <div className="note">20こ とおると テクニック +1！</div>
 
       {!started && !finished && (
         <button className="button blue" onClick={start}>
@@ -691,8 +765,7 @@ function TapTraining({
           if (!firedRef.current) {
             firedRef.current = true;
             const c = countRef.current;
-            const points = c <= 30 ? 1 : c <= 70 ? 2 : 3;
-            onClear(points);
+            onClear(c >= 80 ? 1 : 0);
           }
 
           return 0;
@@ -773,7 +846,7 @@ function TapTraining({
         火花レベル {tier + 1} / 5　{tier >= 4 ? "（虹色・最大！）" : ""}
       </div>
       <div className="note" style={{ marginTop: 4 }}>
-        30回以下→+1 / 31〜70回→+2 / 71回以上→+3
+        80回いじょうで パワー +1！
       </div>
 
       <button className="button red" onClick={tap}>
@@ -879,8 +952,9 @@ function RunningTraining({
         return;
       }
 
-      // 5mごとにスピードが1.25倍ずつ速くなる
-      const sp = SPEED_MPS * Math.pow(1.25, Math.floor(s.charX / 5));
+      // 5mごとにスピードが1.25倍ずつ速くなる（上限あり：100mゴールまで遊べるように）
+      const sp =
+        SPEED_MPS * Math.min(Math.pow(1.25, Math.floor(s.charX / 5)), 3.8);
 
       // カメラが進む
       s.camX += sp * DT;
@@ -936,16 +1010,27 @@ function RunningTraining({
       // 画面上のキャラ位置（px）
       const screenX = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
 
-      // 終了判定：崖に落ちた or 引っかかって画面の左端に到達
+      // 100メートル ゴール！ → 成功
+      if (s.charX >= 100) {
+        s.finished = true;
+        setFinished(true);
+        setMessage("100m ゴール！ スタミナ +1！");
+        if (!firedRef.current) {
+          firedRef.current = true;
+          onClear(1);
+        }
+        return;
+      }
+
+      // 終了判定：崖に落ちた or 引っかかって画面の左端に到達 → 失敗
       if (s.yFeet < -60 || screenX < 2) {
         s.finished = true;
         setFinished(true);
         const meters = Math.max(0, Math.floor(s.charX));
-        const points = meters <= 10 ? 1 : meters <= 30 ? 2 : 3;
-        setMessage(`${meters}メートル！ スタミナ +${points}`);
+        setMessage(`${meters}メートル… ゴールは100m！`);
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(points);
+          onClear(0);
         }
         return;
       }
@@ -1099,7 +1184,7 @@ function RunningTraining({
             fontWeight: 900
           }}
         >
-          {meters} m
+          {meters} / 100 m
         </div>
       </div>
 
@@ -1107,7 +1192,7 @@ function RunningTraining({
         {message}
       </div>
       <div className="note">
-        タップ＝小ジャンプ／長押し＝大ジャンプ　10m以下→+1 / 11〜30m→+2 / 31m以上→+3
+        タップ＝小ジャンプ／長押し＝大ジャンプ　100mゴールで スタミナ +1！
       </div>
 
       {!started && !finished && (
