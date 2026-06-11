@@ -70,6 +70,7 @@ export default function TrainingPage() {
   const [mode, setMode] = useState<"menu" | "playing" | "clear">("menu");
   const [earned, setEarned] = useState(0);
   const [gotSeed, setGotSeed] = useState(false);
+  const [resultText, setResultText] = useState("");
   const [doneToday, setDoneToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -99,7 +100,11 @@ export default function TrainingPage() {
 
   // statPoints: 能力の現在値を上げる（以前どおり、上限まで）。
   // seedEarned: 条件達成なら「種」を1つもらえる（1日それぞれ1回）。
-  async function onClear(statPoints: number, seedEarned: boolean) {
+  async function onClear(
+    statPoints: number,
+    seedEarned: boolean,
+    result?: string
+  ) {
     if (!monster) {
       return;
     }
@@ -154,6 +159,7 @@ export default function TrainingPage() {
 
     setEarned(statPoints);
     setGotSeed(seed);
+    setResultText(result || "");
     setMode("clear");
   }
 
@@ -252,8 +258,21 @@ export default function TrainingPage() {
                 expression={earned > 0 || gotSeed ? "happy" : "sad"}
               />
 
+              {resultText && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 28,
+                    fontWeight: 900,
+                    color: "#2b1b10"
+                  }}
+                >
+                  {resultText}
+                </div>
+              )}
+
               {earned > 0 ? (
-                <div className="title">
+                <div className="title" style={{ color: "#2f8ee5" }}>
                   {config.targetLabel} +{earned}！
                 </div>
               ) : (
@@ -307,13 +326,14 @@ function PowerTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean) => void;
+  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
 }) {
   const [position, setPosition] = useState(0);
   const posRef = useRef(0);
   const dirRef = useRef(1);
   const speedRef = useRef(2.4);
   const successRef = useRef(0); // 連続成功（リセットあり）
+  const maxStreakRef = useRef(0); // 最高連続記録（結果表示用）
   const totalRef = useRef(0); // 合計成功（能力アップ用）
   const seedReachedRef = useRef(false); // 10連続で種ゲット（その後も続く）
   const firedRef = useRef(false);
@@ -373,7 +393,11 @@ function PowerTraining({
             // 合計成功数で スピードUP（種は10連続のみ）
             const t = totalRef.current;
             const pts = t <= 3 ? 1 : t <= 5 ? 2 : 3;
-            onClear(t > 0 ? pts : 0, seedReachedRef.current);
+            onClear(
+              t > 0 ? pts : 0,
+              seedReachedRef.current,
+              `さいこう ${maxStreakRef.current} 連続！`
+            );
           }
 
           return 0;
@@ -400,6 +424,7 @@ function PowerTraining({
     if (pos >= 38 && pos <= 62) {
       successRef.current += 1;
       totalRef.current += 1;
+      maxStreakRef.current = Math.max(maxStreakRef.current, successRef.current);
       setSuccess(successRef.current);
       speedRef.current += 0.4;
 
@@ -503,7 +528,7 @@ function PowerTraining({
         のこり {timeLeft.toFixed(1)} 秒 ・ れんぞく {success} / 10
       </div>
       <div className="note">
-        成功回数で スピードUP。れんぞく10回で 種も ゲット！
+        成功 1〜3回で +1・4〜5回で +2・6回以上で +3。10連続で 種ゲット！
       </div>
 
       <button className="button red" onClick={stop}>
@@ -526,7 +551,7 @@ function ThreadTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean) => void;
+  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
 }) {
   const [, setTick] = useState(0);
   const [passedView, setPassedView] = useState(0);
@@ -626,7 +651,7 @@ function ThreadTraining({
             s.seedReached ? "・種ゲット！" : ""
           }`
         );
-        onClear(pts, s.seedReached);
+        onClear(pts, s.seedReached, `${s.passed} 枚 通過！`);
         return;
       }
 
@@ -721,9 +746,9 @@ function ThreadTraining({
       <div className="title" style={{ marginTop: 16 }}>
         {message}
       </div>
-      <div className="note">通過：{passedView} 回</div>
+      <div className="note">通過：{passedView} 枚</div>
       <div className="note">
-        通過数で テクニックUP。30こで 種ゲット！（20枚〜赤・速く、30枚〜虹色）
+        3枚以下で +1・4〜6枚で +2・7枚以上で +3。30枚で 種ゲット！
       </div>
 
       {!started && !finished && (
@@ -821,7 +846,7 @@ function TapTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean) => void;
+  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -852,7 +877,7 @@ function TapTraining({
             firedRef.current = true;
             const c = countRef.current;
             const pts = c <= 30 ? 1 : c <= 70 ? 2 : 3;
-            onClear(pts, c >= 80);
+            onClear(pts, c >= 80, `連打 ${c} 回！`);
           }
 
           return 0;
@@ -929,12 +954,8 @@ function TapTraining({
         </div>
       </div>
 
-      <div className="note" style={{ marginTop: 12, color: tierColor }}>
-        火花レベル {tier + 1} / 10
-        {tier >= 9 ? "（特大 虹色！）" : tier >= 8 ? "（虹色！）" : ""}
-      </div>
-      <div className="note" style={{ marginTop: 4 }}>
-        回数で パワーUP（30以下+1/71以上+3）。80回で 虹色＆種ゲット！90回で 特大エフェクト！
+      <div className="note" style={{ marginTop: 12 }}>
+        30回以下で +1・31〜70回で +2・71回以上で +3。80回で 種ゲット！
       </div>
 
       <button className="button red" onClick={tap}>
@@ -999,7 +1020,7 @@ function RunningTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean) => void;
+  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -1118,7 +1139,7 @@ function RunningTraining({
         );
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(pts, s.seedReached);
+          onClear(pts, s.seedReached, `${meters} メートル！`);
         }
         return;
       }
@@ -1294,7 +1315,7 @@ function RunningTraining({
         {message}
       </div>
       <div className="note">
-        100mで 種ゲット（その後も続く）。50m荒野→100m地獄→200m宇宙！
+        10m以下で +1・11〜30mで +2・31m以上で +3。100mで 種ゲット！
       </div>
 
       {!started && !finished && (
