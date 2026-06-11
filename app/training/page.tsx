@@ -5,7 +5,7 @@ import MonsterIcon from "@/components/MonsterIcon";
 import { ActiveMonster, getMyActiveMonster } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 type StatType = "power" | "stamina" | "speed" | "technique";
 type TrainingType = "friend" | "running" | "stop" | "thread";
@@ -235,6 +235,8 @@ function PowerTraining({
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [message, setMessage] = useState("ストップでスタート！");
+  const [fx, setFx] = useState<{ id: number; x: number }[]>([]);
+  const fxId = useRef(0);
 
   // バーの動き（常に動く）
   useEffect(() => {
@@ -309,6 +311,11 @@ function PowerTraining({
       setSuccess(successRef.current);
       speedRef.current += 0.5;
       setMessage("ナイスストップ！");
+
+      // 成功エフェクト（止めた位置で光る）
+      const id = fxId.current++;
+      setFx((f) => [...f, { id, x: pos }]);
+      window.setTimeout(() => setFx((f) => f.filter((e) => e.id !== id)), 550);
     } else {
       setMessage("おしい！");
     }
@@ -316,6 +323,7 @@ function PowerTraining({
 
   return (
     <div className="card">
+      <EffectStyles />
       <div className="title">{config.title}</div>
       <div className="note">{config.description}</div>
 
@@ -327,7 +335,7 @@ function PowerTraining({
           position: "relative",
           marginTop: 20,
           background: "#ffe0a6",
-          overflow: "hidden"
+          overflow: "visible"
         }}
       >
         <div
@@ -338,7 +346,8 @@ function PowerTraining({
             height: "100%",
             background: "#7cff8a",
             borderLeft: "4px dashed #2b1b10",
-            borderRight: "4px dashed #2b1b10"
+            borderRight: "4px dashed #2b1b10",
+            borderRadius: 4
           }}
         />
         <div
@@ -354,6 +363,22 @@ function PowerTraining({
             borderRadius: 14
           }}
         />
+
+        {/* 成功エフェクト */}
+        {fx.map((e) => (
+          <div
+            key={e.id}
+            style={{
+              position: "absolute",
+              left: `${e.x}%`,
+              top: "50%",
+              pointerEvents: "none"
+            }}
+          >
+            <span className="fx-ring" />
+            <SparkBurst tier={2} />
+          </div>
+        ))}
       </div>
 
       <div className="title" style={{ marginTop: 16 }}>
@@ -586,6 +611,51 @@ function ThreadTraining({
 }
 
 // ③ 連打：10秒。回数で +1/+2/+3。
+// ===== 火花・リングのエフェクト =====
+function EffectStyles() {
+  return (
+    <style>{`
+.fx-spark{position:absolute;left:0;top:0;width:12px;height:12px;border-radius:50%;transform:translate(-50%,-50%);animation:fx-fly .6s ease-out forwards;}
+@keyframes fx-fly{0%{transform:translate(-50%,-50%) scale(1);opacity:1;}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.2);opacity:0;}}
+.fx-ring{position:absolute;left:0;top:0;border-radius:50%;border:5px solid #fff;transform:translate(-50%,-50%);animation:fx-ring .5s ease-out forwards;}
+@keyframes fx-ring{0%{opacity:.95;width:12px;height:12px;}100%{opacity:0;width:96px;height:96px;}}
+`}</style>
+  );
+}
+
+// 20回ごとにレベルアップ、80回以上(レベル4)は虹色＆最大量
+function tapTier(count: number) {
+  return Math.min(4, Math.floor(count / 20));
+}
+
+const TIER_COLORS = ["#ffd23f", "#ff9f1c", "#ff4b35", "#b061ff", ""];
+
+function SparkBurst({ tier }: { tier: number }) {
+  const counts = [5, 7, 9, 12, 18];
+  const n = counts[tier];
+  return (
+    <>
+      {Array.from({ length: n }).map((_, i) => {
+        const ang = (360 / n) * i + tier * 9;
+        const dist = 26 + tier * 11;
+        const dx = Math.cos((ang * Math.PI) / 180) * dist;
+        const dy = Math.sin((ang * Math.PI) / 180) * dist;
+        const color =
+          tier >= 4
+            ? `hsl(${Math.round((360 / n) * i)},90%,55%)`
+            : TIER_COLORS[tier];
+        const st = {
+          "--dx": `${dx.toFixed(1)}px`,
+          "--dy": `${dy.toFixed(1)}px`,
+          background: color,
+          boxShadow: `0 0 7px ${color}`
+        } as CSSProperties;
+        return <span key={i} className="fx-spark" style={st} />;
+      })}
+    </>
+  );
+}
+
 function TapTraining({
   config,
   onClear
@@ -597,8 +667,13 @@ function TapTraining({
   const [finished, setFinished] = useState(false);
   const [count, setCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(10);
+  const [bursts, setBursts] = useState<{ id: number; tier: number }[]>([]);
   const countRef = useRef(0);
+  const burstId = useRef(0);
   const firedRef = useRef(false);
+
+  const tier = tapTier(count);
+  const tierColor = tier >= 4 ? "#ff4bd2" : TIER_COLORS[tier];
 
   useEffect(() => {
     if (!started || finished) {
@@ -641,15 +716,25 @@ function TapTraining({
 
     countRef.current += 1;
     setCount(countRef.current);
+
+    const t = tapTier(countRef.current);
+    const id = burstId.current++;
+    setBursts((b) => [...b, { id, tier: t }]);
+    window.setTimeout(
+      () => setBursts((b) => b.filter((x) => x.id !== id)),
+      600
+    );
   }
 
   return (
     <div className="card">
+      <EffectStyles />
       <div className="title">{config.title}</div>
       <div className="note">{config.description}</div>
 
       <div
         style={{
+          position: "relative",
           height: 200,
           border: "4px solid #2b1b10",
           borderRadius: 24,
@@ -658,18 +743,36 @@ function TapTraining({
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          alignItems: "center"
+          alignItems: "center",
+          overflow: "hidden"
         }}
       >
         <div style={{ fontSize: 40, fontWeight: 900, color: "#ff3d3d" }}>
           {timeLeft.toFixed(1)}
         </div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: "#2b1b10" }}>
+        <div style={{ fontSize: 26, fontWeight: 900, color: tierColor }}>
           連打：{count} 回
+        </div>
+
+        {/* 火花エフェクト（中央から出る） */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "52%",
+            pointerEvents: "none"
+          }}
+        >
+          {bursts.map((b) => (
+            <SparkBurst key={b.id} tier={b.tier} />
+          ))}
         </div>
       </div>
 
-      <div className="note" style={{ marginTop: 12 }}>
+      <div className="note" style={{ marginTop: 12, color: tierColor }}>
+        火花レベル {tier + 1} / 5　{tier >= 4 ? "（虹色・最大！）" : ""}
+      </div>
+      <div className="note" style={{ marginTop: 4 }}>
         30回以下→+1 / 31〜70回→+2 / 71回以上→+3
       </div>
 
@@ -695,6 +798,7 @@ const GRAVITY = 600; // 重力 px/s^2
 const JUMP_VMAX = 360; // 大ジャンプ初速（最高到達 ≒ 108px、滞空 ≒ 1.2秒）
 const JUMP_CUT = 0.42; // 早く離したときの減速率（小ジャンプ）
 const STEP_TOL = 8; // これ以下の段差はそのまま登れる
+const CATCHUP = 4; // 障害物を越えたあと画面中央へ戻る速さ（m/s）
 const GAP = -999; // 崖（穴）のセンチネル
 
 // コース生成：平地・登り・下り・崖をランダムに並べる。最初の4mは安全。
@@ -793,6 +897,10 @@ function RunningTraining({
       }
       if (!blocked) {
         s.charX += sp * DT;
+        // 障害物を越えたあとは画面中央（camX）へ追いつく
+        if (s.charX < s.camX) {
+          s.charX = Math.min(s.camX, s.charX + CATCHUP * DT);
+        }
       }
 
       // 立っているセル
@@ -828,8 +936,8 @@ function RunningTraining({
       // 画面上のキャラ位置（px）
       const screenX = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
 
-      // 終了判定：崖に落ちた or 引っかかって画面外
-      if (s.yFeet < -50 || screenX < -CHAR_SIZE) {
+      // 終了判定：崖に落ちた or 引っかかって画面の左端に到達
+      if (s.yFeet < -60 || screenX < 2) {
         s.finished = true;
         setFinished(true);
         const meters = Math.max(0, Math.floor(s.charX));
