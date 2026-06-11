@@ -25,10 +25,10 @@ const items: {
   { key: "home", label: "ホーム", icon: "🏠", href: "/home", color: "#ff7a00" },
   { key: "mission", label: "ミッション", icon: "🎯", href: "/mission", color: "#34b85a" },
   { key: "training", label: "トレーニング", icon: "💪", href: "/training", color: "#ff4b35" },
-  { key: "inventory", label: "もちもの", icon: "🎒", href: "/inventory", color: "#2f8ee5" },
   { key: "battle", label: "バトル", icon: "⚔️", href: "/battle", color: "#9b51e0" },
-  { key: "zukan", label: "ずかん", icon: "📖", href: "/zukan", color: "#c08a2d" },
-  { key: "ranking", label: "ランキング", icon: "🏆", href: "/ranking", color: "#e0398a" }
+  { key: "ranking", label: "ランキング", icon: "🏆", href: "/ranking", color: "#e0398a" },
+  { key: "inventory", label: "もちもの", icon: "🎒", href: "/inventory", color: "#2f8ee5" },
+  { key: "zukan", label: "ずかん", icon: "📖", href: "/zukan", color: "#c08a2d" }
 ];
 
 export default function BottomNav({ active }: BottomNavProps) {
