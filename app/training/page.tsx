@@ -51,7 +51,7 @@ const trainings: TrainingConfig[] = [
     stat: "technique",
     title: "糸通しトレーニング",
     description:
-      "長押しで上昇、はなすと下降。すき間を20こ通ると テクニック +1。1回でもぶつかったら おしまい！",
+      "長押しで上昇、はなすと下降。すき間を 30こ 通ると テクニックの種ゲット！1回でもぶつかったら おしまい！",
     targetLabel: "テクニック"
   }
 ];
@@ -242,6 +242,14 @@ export default function TrainingPage() {
 
           {mode === "clear" && (
             <div className="card" style={{ textAlign: "center" }}>
+              <button
+                className="button"
+                style={{ marginTop: 0, marginBottom: 6 }}
+                onClick={() => setMode("playing")}
+              >
+                🔁 もう一度（{config.title}）
+              </button>
+
               <MonsterIcon
                 color={monster.egg_color}
                 size={120}
@@ -472,8 +480,18 @@ function PowerTraining({
               pointerEvents: "none"
             }}
           >
-            <span className="fx-ring" />
-            <SparkBurst tier={e.rainbow ? 6 : 2} />
+            <span
+              className="fx-ring"
+              style={{ borderColor: e.rainbow ? "#ffd23f" : "#fff" }}
+            />
+            <span
+              className="fx-ring"
+              style={{
+                animationDelay: "0.1s",
+                borderColor: e.rainbow ? "#18a0fb" : "#ffd23f"
+              }}
+            />
+            <SparkBurst tier={e.rainbow ? 9 : 4} />
           </div>
         ))}
       </div>
@@ -546,9 +564,17 @@ function ThreadTraining({
       if (s.y < 5) s.y = 5;
       if (s.y > 95) s.y = 95;
 
-      // 壁を左へ
+      // 壁を左へ（5枚目までは0.7倍速、20枚から1.25倍、30枚から1.4倍）
+      const sf =
+        s.passed < 5
+          ? 0.7
+          : s.passed < 20
+          ? 1.0
+          : s.passed < 30
+          ? 1.25
+          : 1.4;
       for (const w of s.walls) {
-        w.x -= 1.7;
+        w.x -= 1.7 * sf;
       }
 
       // 壁の出現
@@ -586,10 +612,10 @@ function ThreadTraining({
 
       setPassedView(s.passed);
 
-      // 20こ通過で 種ゲット（まだ つづく！）
-      if (s.passed >= 20 && !s.seedReached) {
+      // 30こ通過で 種ゲット（まだ つづく！）
+      if (s.passed >= 30 && !s.seedReached) {
         s.seedReached = true;
-        setMessage("20こ クリア！ テクニックの種 ゲット！ まだ つづく！");
+        setMessage("30こ クリア！ テクニックの種 ゲット！ まだ つづく！");
       }
 
       if (hit) {
@@ -625,6 +651,13 @@ function ThreadTraining({
   }
 
   const s = state.current;
+  // 20枚から赤、30枚から虹色
+  const wallColor =
+    s.passed >= 30
+      ? "linear-gradient(180deg,#ff3b3b,#ffb000,#39d353,#18a0fb,#a83dff)"
+      : s.passed >= 20
+      ? "#ff4b35"
+      : "#2f8ee5";
 
   return (
     <div className="card">
@@ -652,7 +685,7 @@ function ThreadTraining({
                 transform: "translateX(-50%)",
                 width: `${WALL_HALF * 2}%`,
                 height: `${Math.max(0, w.gap - HALF_GAP)}%`,
-                background: "#2f8ee5",
+                background: wallColor,
                 border: "3px solid #2b1b10"
               }}
             />
@@ -664,7 +697,7 @@ function ThreadTraining({
                 transform: "translateX(-50%)",
                 width: `${WALL_HALF * 2}%`,
                 height: `${Math.max(0, 100 - (w.gap + HALF_GAP))}%`,
-                background: "#2f8ee5",
+                background: wallColor,
                 border: "3px solid #2b1b10"
               }}
             />
@@ -690,7 +723,9 @@ function ThreadTraining({
         {message}
       </div>
       <div className="note">通過：{passedView} 回</div>
-      <div className="note">通過数で テクニックUP。20こで 種も ゲット！</div>
+      <div className="note">
+        通過数で テクニックUP。30こで 種ゲット！（20枚〜赤・速く、30枚〜虹色）
+      </div>
 
       {!started && !finished && (
         <button className="button blue" onClick={start}>
@@ -733,40 +768,48 @@ function EffectStyles() {
   );
 }
 
-// 10回ごとにレベルアップ、60回以上(レベル6)は虹色＆最大量
+// 10回ごとにレベルアップ。80回以上(レベル8)は虹色、90回以上(レベル9)は特大虹色。
 function tapTier(count: number) {
-  return Math.min(6, Math.floor(count / 10));
+  return Math.min(9, Math.floor(count / 10));
 }
 
 const TIER_COLORS = [
   "#ffd23f",
   "#ffb000",
+  "#ff9100",
   "#ff7a35",
   "#ff4b35",
   "#ff2e88",
-  "#b061ff",
+  "#c061ff",
+  "#7a5cff",
+  "",
   ""
 ];
 
 function SparkBurst({ tier }: { tier: number }) {
-  const counts = [5, 6, 7, 9, 11, 13, 16];
-  const n = counts[tier];
+  const counts = [5, 6, 7, 8, 9, 11, 13, 15, 18, 26];
+  const rainbow = tier >= 8;
+  const giant = tier >= 9;
+  const n = counts[Math.min(tier, counts.length - 1)];
+  const baseDist = 26 + Math.min(tier, 7) * 9;
+  const dist = giant ? baseDist * 2.4 : baseDist;
+  const sz = giant ? 30 : 12;
   return (
     <>
       {Array.from({ length: n }).map((_, i) => {
         const ang = (360 / n) * i + tier * 9;
-        const dist = 26 + tier * 11;
         const dx = Math.cos((ang * Math.PI) / 180) * dist;
         const dy = Math.sin((ang * Math.PI) / 180) * dist;
-        const color =
-          tier >= 6
-            ? `hsl(${Math.round((360 / n) * i)},90%,55%)`
-            : TIER_COLORS[tier];
+        const color = rainbow
+          ? `hsl(${Math.round((360 / n) * i)},90%,55%)`
+          : TIER_COLORS[tier];
         const st = {
           "--dx": `${dx.toFixed(1)}px`,
           "--dy": `${dy.toFixed(1)}px`,
+          width: sz,
+          height: sz,
           background: color,
-          boxShadow: `0 0 7px ${color}`
+          boxShadow: `0 0 ${giant ? 16 : 7}px ${color}`
         } as CSSProperties;
         return <span key={i} className="fx-spark" style={st} />;
       })}
@@ -791,7 +834,7 @@ function TapTraining({
   const firedRef = useRef(false);
 
   const tier = tapTier(count);
-  const tierColor = tier >= 6 ? "#ff4bd2" : TIER_COLORS[tier];
+  const tierColor = tier >= 8 ? "#ff4bd2" : TIER_COLORS[tier];
 
   useEffect(() => {
     if (!started || finished) {
@@ -810,7 +853,7 @@ function TapTraining({
             firedRef.current = true;
             const c = countRef.current;
             const pts = c <= 30 ? 1 : c <= 70 ? 2 : 3;
-            onClear(pts, c >= 65);
+            onClear(pts, c >= 80);
           }
 
           return 0;
@@ -888,10 +931,11 @@ function TapTraining({
       </div>
 
       <div className="note" style={{ marginTop: 12, color: tierColor }}>
-        火花レベル {tier + 1} / 7　{tier >= 6 ? "（虹色・最大！）" : ""}
+        火花レベル {tier + 1} / 10
+        {tier >= 9 ? "（特大 虹色！）" : tier >= 8 ? "（虹色！）" : ""}
       </div>
       <div className="note" style={{ marginTop: 4 }}>
-        回数で パワーUP（30以下+1/71以上+3）。65回で 種も ゲット！
+        回数で パワーUP（30以下+1/71以上+3）。80回で 虹色＆種ゲット！90回で 特大エフェクト！
       </div>
 
       <button className="button red" onClick={tap}>
@@ -1121,6 +1165,18 @@ function RunningTraining({
   const meters = Math.max(0, Math.floor(distanceView));
   const screenXChar = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
 
+  // ステージ：50m〜荒野、100m〜地獄、200m〜宇宙
+  const stageIdx = meters < 50 ? 0 : meters < 100 ? 1 : meters < 200 ? 2 : 3;
+  const stageBg = [
+    "linear-gradient(#aee4ff 0%, #c8efff 45%, #8ed861 45%, #74c948 100%)",
+    "linear-gradient(#d9b97a 0%, #ecd49a 45%, #b88a4a 45%, #9c6f38 100%)",
+    "linear-gradient(#2a0808 0%, #7a1810 42%, #d23a16 42%, #ff7a2a 100%)",
+    "radial-gradient(circle at 30% 20%, #221a5e 0%, #0a0620 60%, #05030f 100%)"
+  ][stageIdx];
+  const groundColor = ["#7a4a25", "#a06a32", "#3a1008", "#241f4a"][stageIdx];
+  const grassColor = ["#59b13a", "#cfa85c", "#ff7a35", "#7a6cff"][stageIdx];
+  const stageName = ["草原", "荒野", "地獄", "宇宙"][stageIdx];
+
   // 表示するセルの範囲
   const cells: number[] = [];
   for (let c = Math.floor(s.camX) - 2; c <= Math.floor(s.camX) + 10; c++) {
@@ -1155,34 +1211,36 @@ function RunningTraining({
           overflow: "hidden",
           cursor: "pointer",
           userSelect: "none",
-          // 草原：空→草へ
-          background:
-            "linear-gradient(#aee4ff 0%, #c8efff 45%, #8ed861 45%, #74c948 100%)"
+          background: stageBg
         }}
       >
-        {/* 雲 */}
-        <div
-          style={{
-            position: "absolute",
-            top: 16,
-            left: 36,
-            width: 60,
-            height: 22,
-            background: "rgba(255,255,255,0.85)",
-            borderRadius: 999
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 32,
-            right: 48,
-            width: 80,
-            height: 24,
-            background: "rgba(255,255,255,0.8)",
-            borderRadius: 999
-          }}
-        />
+        {/* 雲（草原・荒野のみ） */}
+        {stageIdx < 2 && (
+          <>
+            <div
+              style={{
+                position: "absolute",
+                top: 16,
+                left: 36,
+                width: 60,
+                height: 22,
+                background: "rgba(255,255,255,0.85)",
+                borderRadius: 999
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: 32,
+                right: 48,
+                width: 80,
+                height: 24,
+                background: "rgba(255,255,255,0.8)",
+                borderRadius: 999
+              }}
+            />
+          </>
+        )}
 
         {/* 地面ブロック（崖は描かない・段差は高さで表現） */}
         {cells.map((cell) =>
@@ -1195,8 +1253,8 @@ function RunningTraining({
                 left: CHAR_BASE_X + (cell - s.camX) * PX_PER_M,
                 width: PX_PER_M + 1,
                 height: heightAt(cell),
-                background: "#7a4a25",
-                borderTop: "6px solid #59b13a",
+                background: groundColor,
+                borderTop: `6px solid ${grassColor}`,
                 boxSizing: "border-box"
               }}
             />
@@ -1229,7 +1287,7 @@ function RunningTraining({
             fontWeight: 900
           }}
         >
-          {meters} / 100 m
+          {meters} m ・ {stageName}
         </div>
       </div>
 
@@ -1237,7 +1295,7 @@ function RunningTraining({
         {message}
       </div>
       <div className="note">
-        タップ＝小ジャンプ／長押し＝大ジャンプ　距離で スタミナUP。100mゴールで 種も ゲット！
+        100mで 種ゲット（その後も続く）。50m荒野→100m地獄→200m宇宙！
       </div>
 
       {!started && !finished && (
