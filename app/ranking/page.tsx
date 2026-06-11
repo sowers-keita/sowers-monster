@@ -13,6 +13,8 @@ type RankingRow = {
   name: string;
   egg_color: EggColor;
   stage: string;
+  speed: number;
+  technique: number;
   battle_power: number;
   child_id: string;
   children?: {
@@ -56,6 +58,8 @@ export default function RankingPage() {
         name,
         egg_color,
         stage,
+        speed,
+        technique,
         battle_power,
         child_id,
         children (
@@ -228,7 +232,13 @@ function RankCard({
           justifyContent: "center"
         }}
       >
-        <MonsterIcon color={row.egg_color} size={52} stage={row.stage} />
+        <MonsterIcon
+          color={row.egg_color}
+          size={52}
+          stage={row.stage}
+          speed={row.speed}
+          technique={row.technique}
+        />
       </div>
 
       <div style={{ overflow: "hidden" }}>
