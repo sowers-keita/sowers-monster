@@ -205,9 +205,20 @@ export default function TrainingPage() {
                     setSelected(item.type);
                     setMode("playing");
                   }}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    lineHeight: 1.2
+                  }}
                 >
-                  {item.title}
-                  {doneToday[item.type] ? "（きょうの種は ゲット済み）" : ""}
+                  <span>{item.title}</span>
+                  {doneToday[item.type] && (
+                    <span style={{ fontSize: 12, fontWeight: 700, marginTop: 3 }}>
+                      きょうの種は ゲット済み
+                    </span>
+                  )}
                 </button>
               ))}
             </>
@@ -297,6 +308,7 @@ function PowerTraining({
   const speedRef = useRef(2.4);
   const successRef = useRef(0); // 連続成功（リセットあり）
   const totalRef = useRef(0); // 合計成功（能力アップ用）
+  const seedReachedRef = useRef(false); // 10連続で種ゲット（その後も続く）
   const firedRef = useRef(false);
 
   const [success, setSuccess] = useState(0);
@@ -354,7 +366,7 @@ function PowerTraining({
             // 合計成功数で スピードUP（種は10連続のみ）
             const t = totalRef.current;
             const pts = t <= 3 ? 1 : t <= 5 ? 2 : 3;
-            onClear(t > 0 ? pts : 0, false);
+            onClear(t > 0 ? pts : 0, seedReachedRef.current);
           }
 
           return 0;
@@ -391,13 +403,11 @@ function PowerTraining({
       setFx((f) => [...f, { id, x: pos, rainbow: reached }]);
       window.setTimeout(() => setFx((f) => f.filter((e) => e.id !== id)), 650);
 
-      if (reached) {
-        setMessage("10れんぞく！ スピードの種 ゲット！");
-        setFinished(true);
-        if (!firedRef.current) {
-          firedRef.current = true;
-          onClear(3, true);
-        }
+      if (reached && !seedReachedRef.current) {
+        seedReachedRef.current = true;
+        setMessage("10れんぞく！ スピードの種 ゲット！ まだ つづく！");
+      } else if (reached) {
+        setMessage(`${successRef.current}れんぞく！（種ゲット済み）`);
       } else {
         setMessage(`${successRef.current}れんぞく！`);
       }
@@ -463,7 +473,7 @@ function PowerTraining({
             }}
           >
             <span className="fx-ring" />
-            <SparkBurst tier={e.rainbow ? 4 : 2} />
+            <SparkBurst tier={e.rainbow ? 6 : 2} />
           </div>
         ))}
       </div>
@@ -515,7 +525,8 @@ function ThreadTraining({
     nextId: 1,
     spawn: 0,
     started: false,
-    finished: false
+    finished: false,
+    seedReached: false // 20こ通過で種ゲット（ゲームは続く）
   });
 
   const BIRD_X = 18;
@@ -575,21 +586,22 @@ function ThreadTraining({
 
       setPassedView(s.passed);
 
-      // 20こ通過で 種ゲット！
-      if (s.passed >= 20) {
-        s.finished = true;
-        setFinished(true);
-        setMessage("20こ クリア！ テクニックの種 ゲット！");
-        onClear(3, true);
-        return;
+      // 20こ通過で 種ゲット（まだ つづく！）
+      if (s.passed >= 20 && !s.seedReached) {
+        s.seedReached = true;
+        setMessage("20こ クリア！ テクニックの種 ゲット！ まだ つづく！");
       }
 
       if (hit) {
         s.finished = true;
         setFinished(true);
         const pts = s.passed <= 3 ? 1 : s.passed <= 6 ? 2 : 3;
-        setMessage(`ぶつかった！ ${s.passed}こ 通過（テクニック +${pts}）`);
-        onClear(pts, false);
+        setMessage(
+          `ぶつかった！ ${s.passed}こ 通過（テクニック +${pts}）${
+            s.seedReached ? "・種ゲット！" : ""
+          }`
+        );
+        onClear(pts, s.seedReached);
         return;
       }
 
@@ -721,15 +733,23 @@ function EffectStyles() {
   );
 }
 
-// 20回ごとにレベルアップ、80回以上(レベル4)は虹色＆最大量
+// 10回ごとにレベルアップ、60回以上(レベル6)は虹色＆最大量
 function tapTier(count: number) {
-  return Math.min(4, Math.floor(count / 20));
+  return Math.min(6, Math.floor(count / 10));
 }
 
-const TIER_COLORS = ["#ffd23f", "#ff9f1c", "#ff4b35", "#b061ff", ""];
+const TIER_COLORS = [
+  "#ffd23f",
+  "#ffb000",
+  "#ff7a35",
+  "#ff4b35",
+  "#ff2e88",
+  "#b061ff",
+  ""
+];
 
 function SparkBurst({ tier }: { tier: number }) {
-  const counts = [5, 7, 9, 12, 18];
+  const counts = [5, 6, 7, 9, 11, 13, 16];
   const n = counts[tier];
   return (
     <>
@@ -739,7 +759,7 @@ function SparkBurst({ tier }: { tier: number }) {
         const dx = Math.cos((ang * Math.PI) / 180) * dist;
         const dy = Math.sin((ang * Math.PI) / 180) * dist;
         const color =
-          tier >= 4
+          tier >= 6
             ? `hsl(${Math.round((360 / n) * i)},90%,55%)`
             : TIER_COLORS[tier];
         const st = {
@@ -771,7 +791,7 @@ function TapTraining({
   const firedRef = useRef(false);
 
   const tier = tapTier(count);
-  const tierColor = tier >= 4 ? "#ff4bd2" : TIER_COLORS[tier];
+  const tierColor = tier >= 6 ? "#ff4bd2" : TIER_COLORS[tier];
 
   useEffect(() => {
     if (!started || finished) {
@@ -790,7 +810,7 @@ function TapTraining({
             firedRef.current = true;
             const c = countRef.current;
             const pts = c <= 30 ? 1 : c <= 70 ? 2 : 3;
-            onClear(pts, c >= 80);
+            onClear(pts, c >= 65);
           }
 
           return 0;
@@ -868,10 +888,10 @@ function TapTraining({
       </div>
 
       <div className="note" style={{ marginTop: 12, color: tierColor }}>
-        火花レベル {tier + 1} / 5　{tier >= 4 ? "（虹色・最大！）" : ""}
+        火花レベル {tier + 1} / 7　{tier >= 6 ? "（虹色・最大！）" : ""}
       </div>
       <div className="note" style={{ marginTop: 4 }}>
-        回数で パワーUP（30以下+1/71以上+3）。80回で 種も ゲット！
+        回数で パワーUP（30以下+1/71以上+3）。65回で 種も ゲット！
       </div>
 
       <button className="button red" onClick={tap}>
@@ -965,7 +985,8 @@ function RunningTraining({
     vy: 0,
     onGround: true,
     started: false,
-    finished: false
+    finished: false,
+    seedReached: false // 100m通過で種ゲット（ゲームは続く）
   });
 
   useEffect(() => {
@@ -1035,28 +1056,26 @@ function RunningTraining({
       // 画面上のキャラ位置（px）
       const screenX = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
 
-      // 100メートル ゴール！ → 種ゲット
-      if (s.charX >= 100) {
-        s.finished = true;
-        setFinished(true);
-        setMessage("100m ゴール！ スタミナの種 ゲット！");
-        if (!firedRef.current) {
-          firedRef.current = true;
-          onClear(3, true);
-        }
-        return;
+      // 100メートル通過 → 種ゲット（ゲームは まだ続く！）
+      if (s.charX >= 100 && !s.seedReached) {
+        s.seedReached = true;
+        setMessage("100m！ スタミナの種 ゲット！ まだ走れる！");
       }
 
-      // 終了判定：崖に落ちた or 引っかかって画面の左端に到達
-      if (s.yFeet < -60 || screenX < 2) {
+      // 終了判定：崖に落ちた／引っかかって画面外／とても遠く(300m)まで走った
+      if (s.yFeet < -60 || screenX < 2 || s.charX >= 300) {
         s.finished = true;
         setFinished(true);
         const meters = Math.max(0, Math.floor(s.charX));
         const pts = meters <= 10 ? 1 : meters <= 30 ? 2 : 3;
-        setMessage(`${meters}メートル！ スタミナ +${pts}（ゴールは100m）`);
+        setMessage(
+          `${meters}メートル！ スタミナ +${pts}${
+            s.seedReached ? "・種ゲット！" : "（ゴールは100m）"
+          }`
+        );
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(pts, false);
+          onClear(pts, s.seedReached);
         }
         return;
       }
