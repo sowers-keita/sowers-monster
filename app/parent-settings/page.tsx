@@ -16,7 +16,7 @@ export default function ParentSettingsPage() {
   const [missionTitle, setMissionTitle] = useState("靴をそろえる");
   const [missionDescription, setMissionDescription] =
     useState("今日、帰ってきたら靴をそろえよう。");
-  const [rewardSeedType, setRewardSeedType] = useState<SeedType>("all");
+  const [rewardSeedType, setRewardSeedType] = useState<SeedType>("power");
   const [rewardAmount, setRewardAmount] = useState(1);
   const [pin, setPin] = useState("1234");
 
@@ -97,6 +97,41 @@ export default function ParentSettingsPage() {
     setSavingNames(false);
   }
 
+  async function resetAccount() {
+    if (!childId) {
+      return;
+    }
+
+    const ok = window.confirm(
+      "いまのモンスターを 手ばなして、最初から やりなおします。\n（種もリセットされます。名前・ログインは そのまま）\nよろしいですか？"
+    );
+    if (!ok) {
+      return;
+    }
+
+    // いまのモンスターを引退（is_active を false に）
+    await supabase
+      .from("monsters")
+      .update({ is_active: false })
+      .eq("child_id", childId)
+      .eq("is_active", true);
+
+    // 種を 0 に
+    await supabase.from("seeds").update({ count: 0 }).eq("child_id", childId);
+
+    // トレーニングの「きょうの種」記録を消す
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("swm_train_"))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      // 無視
+    }
+
+    alert("リセットしました。新しい卵を えらびましょう！");
+    router.push("/egg-select");
+  }
+
   async function saveMission() {
     if (!childId) {
       return;
@@ -164,7 +199,6 @@ export default function ParentSettingsPage() {
                 setRewardSeedType(event.target.value as SeedType)
               }
             >
-              <option value="all">小さな万能の種</option>
               <option value="power">小さなパワーの種</option>
               <option value="stamina">小さなスタミナの種</option>
               <option value="speed">小さなスピードの種</option>
@@ -233,6 +267,16 @@ export default function ParentSettingsPage() {
               disabled={savingNames}
             >
               {savingNames ? "保存中…" : "名前を保存"}
+            </button>
+          </div>
+
+          <div className="card">
+            <div className="title">最初からやりなおす</div>
+            <div className="note" style={{ marginBottom: 8 }}>
+              いまのモンスターを 手ばなして、新しい卵から はじめます。種もリセットされます（名前・ログインは そのまま）。
+            </div>
+            <button className="button red" onClick={resetAccount}>
+              最初から はじめる
             </button>
           </div>
 
