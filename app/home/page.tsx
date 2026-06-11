@@ -388,9 +388,6 @@ export default function HomePage() {
               >
                 今日が 旅立ちの日！
               </div>
-              <div className="note" style={{ marginTop: 4 }}>
-                たくさん育ててくれてありがとう。旅立ちを見送ろう。
-              </div>
               <button
                 className="button red"
                 onClick={() => router.push("/journey")}
@@ -409,9 +406,6 @@ export default function HomePage() {
                   {daysLeft}
                 </span>{" "}
                 日
-              </div>
-              <div className="note" style={{ marginTop: 4 }}>
-                旅立ちの日まで たくさん 育てよう・バトルしよう！
               </div>
             </div>
           )}
@@ -446,9 +440,6 @@ export default function HomePage() {
               <div style={{ fontWeight: 900, color: "#2b1b10" }}>
                 あと <span style={{ color: "#ff7a00" }}>{evoRemain}</span>{" "}
                 つよくすると しんか！
-              </div>
-              <div className="note" style={{ marginTop: 4 }}>
-                トレーニングで パワー・スタミナ・スピード・テクニックを そだてよう
               </div>
             </div>
           )}
