@@ -202,7 +202,7 @@ export default function ZukanPage() {
         </div>
       </div>
 
-      <BottomNav active="home" />
+      <BottomNav active="zukan" />
     </main>
   );
 }
