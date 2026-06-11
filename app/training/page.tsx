@@ -356,7 +356,7 @@ export default function TrainingPage() {
         </div>
       </div>
 
-      <BottomNav active="home" />
+      <BottomNav active="training" />
     </main>
   );
 }
