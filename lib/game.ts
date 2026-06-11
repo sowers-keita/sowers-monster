@@ -51,10 +51,10 @@ export const seedLabels: Record<SeedType, string> = {
 };
 
 export const seedDescriptions: Record<SeedType, string> = {
-  power: "パワーの限界値が +10",
-  stamina: "スタミナの限界値が +10",
-  speed: "スピードの限界値が +10",
-  technique: "テクニックの限界値が +10",
+  power: "パワーの限界値が +5",
+  stamina: "スタミナの限界値が +5",
+  speed: "スピードの限界値が +5",
+  technique: "テクニックの限界値が +5",
   all: "すべての限界値が +5 ずつ",
   rainbow: "好きな能力を 1つ +10"
 };
@@ -182,12 +182,12 @@ export async function consumeSeed(seedId: string, nextCount: number) {
 }
 
 export function getSeedMaxIncrease(seedType: SeedType) {
-  // 万能の種は全能力 +5、それ以外（各種＆虹）は +10
-  if (seedType === "all") {
-    return 5;
+  // 虹の種は好きな能力を +10。小さな実（各種・万能）は +5。
+  if (seedType === "rainbow") {
+    return 10;
   }
 
-  return 10;
+  return 5;
 }
 
 export function calcEvolutionReady(monster: ActiveMonster) {
