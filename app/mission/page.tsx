@@ -5,7 +5,8 @@ import {
   SeedType,
   addSeedToChild,
   getMyChild,
-  seedLabels
+  seedLabels,
+  ymdLocal
 } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -53,7 +54,7 @@ export default function MissionPage() {
 
     setChildId(child.id);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ymdLocal(new Date());
 
     const { data: missionData, error: missionError } = await supabase
       .from("missions")
@@ -221,7 +222,7 @@ export default function MissionPage() {
           <div className="card">
             <div className="title">今日のミッション</div>
             <div className="note">
-              本部ミッションと保護者ミッションは、それぞれ1日1回達成できます。
+              メインミッションとおうちミッションは、それぞれ1日1回達成できます。
             </div>
           </div>
 
@@ -264,8 +265,8 @@ export default function MissionPage() {
 
           {hqMissions.length === 0 && (
             <div className="card">
-              <div className="title">本部ミッションなし</div>
-              <div className="note">今日は本部からのミッションがありません。</div>
+              <div className="title">メインミッションなし</div>
+              <div className="note">今日は メインミッションが ありません。</div>
             </div>
           )}
 
@@ -274,22 +275,22 @@ export default function MissionPage() {
               key={mission.id}
               mission={mission}
               done={isDone(mission.id)}
-              label="本部ミッション"
+              label="メインミッション"
               onComplete={() => completeMission(mission)}
             />
           ))}
 
           {parentMissions.length === 0 && (
             <div className="card">
-              <div className="title">保護者ミッションなし</div>
+              <div className="title">おうちミッションなし</div>
               <div className="note">
-                保護者設定画面から、今日のミッションを設定できます。
+                おうちの人が せってい画面から 今日のミッションを 作れます。
               </div>
               <button
                 className="button blue"
                 onClick={() => router.push("/parent-settings")}
               >
-                保護者設定へ
+                おうちミッションを つくる
               </button>
             </div>
           )}
@@ -299,13 +300,13 @@ export default function MissionPage() {
               <MissionCard
                 mission={mission}
                 done={isDone(mission.id)}
-                label="保護者ミッション"
+                label="おうちミッション"
                 onComplete={() => setSelectedParentMissionId(mission.id)}
               />
 
               {selectedParentMissionId === mission.id && !isDone(mission.id) && (
                 <div className="card">
-                  <div className="title">保護者承認</div>
+                  <div className="title">おうちの人の承認</div>
 
                   <label className="label">暗証番号</label>
                   <input
@@ -332,7 +333,7 @@ export default function MissionPage() {
             className="button orange"
             onClick={() => router.push("/parent-settings")}
           >
-            保護者ミッションを設定する
+            おうちミッションを設定する
           </button>
         </div>
       </div>
