@@ -35,6 +35,9 @@ export default function MissionPage() {
   const [pin, setPin] = useState("");
   const [selectedParentMissionId, setSelectedParentMissionId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeMsg, setCodeMsg] = useState("");
+  const [codeBusy, setCodeBusy] = useState(false);
 
   useEffect(() => {
     loadMissions();
@@ -110,6 +113,71 @@ export default function MissionPage() {
     await loadMissions();
   }
 
+  async function redeemCode() {
+    if (codeBusy) {
+      return;
+    }
+
+    const word = codeInput.trim();
+    if (!word) {
+      setCodeMsg("あいことばを 入力してね。");
+      return;
+    }
+
+    if (!childId) {
+      return;
+    }
+
+    setCodeBusy(true);
+    setCodeMsg("");
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // 今日の合言葉を探す
+    const { data: codes, error: codeError } = await supabase
+      .from("reward_codes")
+      .select("id, seed_type, amount")
+      .eq("code", word)
+      .eq("code_date", today)
+      .limit(1);
+
+    if (codeError) {
+      setCodeMsg(codeError.message);
+      setCodeBusy(false);
+      return;
+    }
+
+    const code = codes && codes[0];
+    if (!code) {
+      setCodeMsg("あいことばが ちがうみたい。今日のものか かくにんしてね。");
+      setCodeBusy(false);
+      return;
+    }
+
+    // すでに使っていないか（1人1回）
+    const { error: logError } = await supabase
+      .from("reward_code_logs")
+      .insert({ child_id: childId, reward_code_id: code.id });
+
+    if (logError) {
+      setCodeMsg("この あいことばは もう つかったよ。");
+      setCodeBusy(false);
+      return;
+    }
+
+    try {
+      await addSeedToChild(childId, code.seed_type as SeedType, code.amount);
+      setCodeMsg(
+        `🌱 ${seedLabels[code.seed_type as SeedType]} +${code.amount} を ゲット！`
+      );
+      setCodeInput("");
+    } catch (e) {
+      setCodeMsg(e instanceof Error ? e.message : "種の付与に失敗しました");
+    }
+
+    setCodeBusy(false);
+  }
+
   async function approveParentMission(mission: Mission) {
     const savedPin = localStorage.getItem("parentPin") || "1234";
 
@@ -155,6 +223,43 @@ export default function MissionPage() {
             <div className="note">
               本部ミッションと保護者ミッションは、それぞれ1日1回達成できます。
             </div>
+          </div>
+
+          <div className="card" style={{ background: "#fff7e6" }}>
+            <div className="title">あいことばで 種ゲット</div>
+            <div className="note">
+              先生から おしえてもらった 今日の あいことばを 入力すると 種が
+              もらえるよ！（1つにつき 1回まで）
+            </div>
+
+            <input
+              className="input"
+              value={codeInput}
+              onChange={(event) => setCodeInput(event.target.value)}
+              placeholder="あいことばを 入力"
+            />
+
+            <button className="button orange" onClick={redeemCode} disabled={codeBusy}>
+              {codeBusy ? "かくにん中…" : "あいことばを つかう"}
+            </button>
+
+            {codeMsg && (
+              <div
+                style={{
+                  marginTop: 10,
+                  background: "white",
+                  border: "3px solid #2b1b10",
+                  borderRadius: 14,
+                  padding: 10,
+                  fontSize: 15,
+                  fontWeight: 900,
+                  color: "#2b1b10",
+                  textAlign: "center"
+                }}
+              >
+                {codeMsg}
+              </div>
+            )}
           </div>
 
           {hqMissions.length === 0 && (
