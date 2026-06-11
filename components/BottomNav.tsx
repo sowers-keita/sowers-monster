@@ -107,11 +107,9 @@ export default function BottomNav({ active }: BottomNavProps) {
       className="bottom-nav"
       style={{
         display: "flex",
-        justifyContent: "flex-start",
+        justifyContent: "space-between",
         alignItems: "stretch",
-        overflowX: "auto",
-        WebkitOverflowScrolling: "touch",
-        gap: 4
+        gap: 2
       }}
     >
       {items.map((item) => {
@@ -121,18 +119,18 @@ export default function BottomNav({ active }: BottomNavProps) {
             key={item.key}
             onClick={() => router.push(item.href)}
             style={{
-              flex: "0 0 auto",
-              minWidth: 64,
-              border: isActive ? "none" : `2px solid ${item.color}`,
-              background: isActive ? item.color : "white",
+              flex: "1 1 0",
+              minWidth: 0,
+              border: "none",
+              background: isActive ? item.color : "transparent",
               color: isActive ? "white" : item.color,
-              borderRadius: 16,
-              padding: "6px 6px 5px",
+              borderRadius: 14,
+              padding: "5px 1px",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 3,
+              gap: 2,
               cursor: "pointer",
               lineHeight: 1,
               boxShadow: isActive ? "0 3px 0 rgba(0,0,0,0.18)" : "none"
@@ -140,7 +138,12 @@ export default function BottomNav({ active }: BottomNavProps) {
           >
             <NavIcon name={item.key} />
             <span
-              style={{ fontSize: 11, fontWeight: 900, whiteSpace: "nowrap" }}
+              style={{
+                fontSize: 8.5,
+                fontWeight: 900,
+                whiteSpace: "nowrap",
+                letterSpacing: "-0.3px"
+              }}
             >
               {item.label}
             </span>
