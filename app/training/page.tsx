@@ -61,8 +61,9 @@ const trainings: TrainingConfig[] = [
 ];
 
 // トレーニングは1日それぞれ1回まで（localStorageで記録）
+// 日付はローカル（日本時間）基準にして、日付が変わったらリセットされるようにする
 function trainDoneKey(childId: string, type: string) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD（ローカル）
   return `swm_train_${childId}_${type}_${today}`;
 }
 
