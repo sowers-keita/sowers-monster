@@ -2,7 +2,11 @@
 
 import BottomNav from "@/components/BottomNav";
 import MonsterIcon from "@/components/MonsterIcon";
-import { ActiveMonster, getMyActiveMonster } from "@/lib/game";
+import {
+  ActiveMonster,
+  addSeedToChild,
+  getMyActiveMonster
+} from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -65,6 +69,7 @@ export default function TrainingPage() {
   const [selected, setSelected] = useState<TrainingType>("friend");
   const [mode, setMode] = useState<"menu" | "playing" | "clear">("menu");
   const [earned, setEarned] = useState(0);
+  const [gotSeed, setGotSeed] = useState(false);
   const [doneToday, setDoneToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -92,31 +97,33 @@ export default function TrainingPage() {
     return trainings.find((item) => item.type === selected) || trainings[0];
   }, [selected]);
 
-  // amount > 0 で成功（その能力を +1）。0 は失敗（何ももらえない）。
-  async function onClear(amount: number) {
+  // statPoints: 能力の現在値を上げる（以前どおり、上限まで）。
+  // seedEarned: 条件達成なら「種」を1つもらえる（1日それぞれ1回）。
+  async function onClear(statPoints: number, seedEarned: boolean) {
     if (!monster) {
       return;
     }
 
-    const success = amount > 0;
-
-    if (success) {
+    // 能力値（現在値）を上げる
+    if (statPoints > 0) {
       const update: Partial<ActiveMonster> = {};
-
       if (config.stat === "power") {
-        update.power = Math.min(monster.power + 1, monster.power_max);
+        update.power = Math.min(monster.power + statPoints, monster.power_max);
       }
-      if (config.stat === "technique") {
-        update.technique = Math.min(
-          monster.technique + 1,
-          monster.technique_max
+      if (config.stat === "stamina") {
+        update.stamina = Math.min(
+          monster.stamina + statPoints,
+          monster.stamina_max
         );
       }
       if (config.stat === "speed") {
-        update.speed = Math.min(monster.speed + 1, monster.speed_max);
+        update.speed = Math.min(monster.speed + statPoints, monster.speed_max);
       }
-      if (config.stat === "stamina") {
-        update.stamina = Math.min(monster.stamina + 1, monster.stamina_max);
+      if (config.stat === "technique") {
+        update.technique = Math.min(
+          monster.technique + statPoints,
+          monster.technique_max
+        );
       }
 
       const { error } = await supabase
@@ -130,11 +137,23 @@ export default function TrainingPage() {
       }
 
       setMonster({ ...monster, ...update } as ActiveMonster);
-      localStorage.setItem(trainDoneKey(monster.child_id, selected), "1");
-      setDoneToday((prev) => ({ ...prev, [selected]: true }));
     }
 
-    setEarned(success ? 1 : 0);
+    // 種の報酬（条件達成＆その日まだ もらっていなければ）
+    let seed = false;
+    if (seedEarned && !doneToday[selected]) {
+      try {
+        await addSeedToChild(monster.child_id, config.stat, 1);
+        localStorage.setItem(trainDoneKey(monster.child_id, selected), "1");
+        setDoneToday((prev) => ({ ...prev, [selected]: true }));
+        seed = true;
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "種の付与に失敗しました");
+      }
+    }
+
+    setEarned(statPoints);
+    setGotSeed(seed);
     setMode("clear");
   }
 
@@ -173,33 +192,24 @@ export default function TrainingPage() {
                   どのトレーニングをする？
                 </div>
                 <div className="note">
-                  クリアすると のうりょくが +1。1日 それぞれ 1回までだよ。
+                  がんばるほど のうりょくUP！じょうずに クリアすると「種」も
+                  1つ もらえるよ（1日 それぞれ 1回）。
                 </div>
               </div>
 
-              {trainings.map((item) => {
-                const done = doneToday[item.type];
-                return (
-                  <button
-                    key={item.type}
-                    className={done ? "button gray" : "button orange"}
-                    onClick={() => {
-                      if (done) {
-                        alert(
-                          "この トレーニングは きょう もう できたよ。また あした！"
-                        );
-                        return;
-                      }
-                      setSelected(item.type);
-                      setMode("playing");
-                    }}
-                  >
-                    {done ? "✓ " : ""}
-                    {item.title}
-                    {done ? "（きょう おわり）" : ""}
-                  </button>
-                );
-              })}
+              {trainings.map((item) => (
+                <button
+                  key={item.type}
+                  className="button orange"
+                  onClick={() => {
+                    setSelected(item.type);
+                    setMode("playing");
+                  }}
+                >
+                  {item.title}
+                  {doneToday[item.type] ? "（きょうの種は ゲット済み）" : ""}
+                </button>
+              ))}
             </>
           )}
 
@@ -227,24 +237,31 @@ export default function TrainingPage() {
                 stage={monster.stage}
                 speed={monster.speed}
                 technique={monster.technique}
-                happy={earned > 0}
-                expression={earned > 0 ? "happy" : "sad"}
+                happy={earned > 0 || gotSeed}
+                expression={earned > 0 || gotSeed ? "happy" : "sad"}
               />
+
               {earned > 0 ? (
-                <>
-                  <div className="title">{config.targetLabel} +1！</div>
-                  <div className="note">
-                    よくがんばったね！{config.targetLabel}が ふえたよ。
-                  </div>
-                </>
+                <div className="title">
+                  {config.targetLabel} +{earned}！
+                </div>
               ) : (
-                <>
-                  <div className="title">ざんねん…</div>
-                  <div className="note">
-                    もくひょうに とどかなかったよ。また ちょうせんしてね！
-                  </div>
-                </>
+                <div className="title">ざんねん…</div>
               )}
+
+              {gotSeed && (
+                <div className="title" style={{ color: "#ff7a00", marginTop: 4 }}>
+                  🌱 {config.targetLabel}の種 を 1こ ゲット！
+                </div>
+              )}
+
+              <div className="note">
+                {gotSeed
+                  ? "もちもの から 種を つかうと 限界値が あがるよ！"
+                  : earned > 0
+                  ? `${config.targetLabel}が ふえたよ。`
+                  : "また ちょうせんしてね！"}
+              </div>
 
               <button className="button" onClick={() => router.push("/home")}>
                 ホームへ戻る
@@ -272,13 +289,14 @@ function PowerTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (amount: number) => void;
+  onClear: (statPoints: number, seedEarned: boolean) => void;
 }) {
   const [position, setPosition] = useState(0);
   const posRef = useRef(0);
   const dirRef = useRef(1);
   const speedRef = useRef(2.4);
-  const successRef = useRef(0);
+  const successRef = useRef(0); // 連続成功（リセットあり）
+  const totalRef = useRef(0); // 合計成功（能力アップ用）
   const firedRef = useRef(false);
 
   const [success, setSuccess] = useState(0);
@@ -333,8 +351,10 @@ function PowerTraining({
 
           if (!firedRef.current) {
             firedRef.current = true;
-            // 10連続できなかった → 失敗
-            onClear(0);
+            // 合計成功数で スピードUP（種は10連続のみ）
+            const t = totalRef.current;
+            const pts = t <= 3 ? 1 : t <= 5 ? 2 : 3;
+            onClear(t > 0 ? pts : 0, false);
           }
 
           return 0;
@@ -360,6 +380,7 @@ function PowerTraining({
 
     if (pos >= 38 && pos <= 62) {
       successRef.current += 1;
+      totalRef.current += 1;
       setSuccess(successRef.current);
       speedRef.current += 0.4;
 
@@ -371,11 +392,11 @@ function PowerTraining({
       window.setTimeout(() => setFx((f) => f.filter((e) => e.id !== id)), 650);
 
       if (reached) {
-        setMessage("10れんぞく！ スピード +1！");
+        setMessage("10れんぞく！ スピードの種 ゲット！");
         setFinished(true);
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(1);
+          onClear(3, true);
         }
       } else {
         setMessage(`${successRef.current}れんぞく！`);
@@ -454,7 +475,9 @@ function PowerTraining({
       <div className="note">
         のこり {timeLeft.toFixed(1)} 秒 ・ れんぞく {success} / 10
       </div>
-      <div className="note">れんぞく10回で スピード +1！</div>
+      <div className="note">
+        成功回数で スピードUP。れんぞく10回で 種も ゲット！
+      </div>
 
       <button className="button red" onClick={stop}>
         {started ? "ストップ！" : "スタート（ストップ！）"}
@@ -476,7 +499,7 @@ function ThreadTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (amount: number) => void;
+  onClear: (statPoints: number, seedEarned: boolean) => void;
 }) {
   const [, setTick] = useState(0);
   const [passedView, setPassedView] = useState(0);
@@ -552,20 +575,21 @@ function ThreadTraining({
 
       setPassedView(s.passed);
 
-      // 20こ通過で成功！
+      // 20こ通過で 種ゲット！
       if (s.passed >= 20) {
         s.finished = true;
         setFinished(true);
-        setMessage("20こ クリア！ テクニック +1！");
-        onClear(1);
+        setMessage("20こ クリア！ テクニックの種 ゲット！");
+        onClear(3, true);
         return;
       }
 
       if (hit) {
         s.finished = true;
         setFinished(true);
-        setMessage(`ぶつかった！ ${s.passed}こ 通過（20こで せいこう）`);
-        onClear(0);
+        const pts = s.passed <= 3 ? 1 : s.passed <= 6 ? 2 : 3;
+        setMessage(`ぶつかった！ ${s.passed}こ 通過（テクニック +${pts}）`);
+        onClear(pts, false);
         return;
       }
 
@@ -654,7 +678,7 @@ function ThreadTraining({
         {message}
       </div>
       <div className="note">通過：{passedView} 回</div>
-      <div className="note">20こ とおると テクニック +1！</div>
+      <div className="note">通過数で テクニックUP。20こで 種も ゲット！</div>
 
       {!started && !finished && (
         <button className="button blue" onClick={start}>
@@ -735,7 +759,7 @@ function TapTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (amount: number) => void;
+  onClear: (statPoints: number, seedEarned: boolean) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -765,7 +789,8 @@ function TapTraining({
           if (!firedRef.current) {
             firedRef.current = true;
             const c = countRef.current;
-            onClear(c >= 80 ? 1 : 0);
+            const pts = c <= 30 ? 1 : c <= 70 ? 2 : 3;
+            onClear(pts, c >= 80);
           }
 
           return 0;
@@ -846,7 +871,7 @@ function TapTraining({
         火花レベル {tier + 1} / 5　{tier >= 4 ? "（虹色・最大！）" : ""}
       </div>
       <div className="note" style={{ marginTop: 4 }}>
-        80回いじょうで パワー +1！
+        回数で パワーUP（30以下+1/71以上+3）。80回で 種も ゲット！
       </div>
 
       <button className="button red" onClick={tap}>
@@ -911,7 +936,7 @@ function RunningTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (amount: number) => void;
+  onClear: (statPoints: number, seedEarned: boolean) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -1010,27 +1035,28 @@ function RunningTraining({
       // 画面上のキャラ位置（px）
       const screenX = CHAR_BASE_X + (s.charX - s.camX) * PX_PER_M;
 
-      // 100メートル ゴール！ → 成功
+      // 100メートル ゴール！ → 種ゲット
       if (s.charX >= 100) {
         s.finished = true;
         setFinished(true);
-        setMessage("100m ゴール！ スタミナ +1！");
+        setMessage("100m ゴール！ スタミナの種 ゲット！");
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(1);
+          onClear(3, true);
         }
         return;
       }
 
-      // 終了判定：崖に落ちた or 引っかかって画面の左端に到達 → 失敗
+      // 終了判定：崖に落ちた or 引っかかって画面の左端に到達
       if (s.yFeet < -60 || screenX < 2) {
         s.finished = true;
         setFinished(true);
         const meters = Math.max(0, Math.floor(s.charX));
-        setMessage(`${meters}メートル… ゴールは100m！`);
+        const pts = meters <= 10 ? 1 : meters <= 30 ? 2 : 3;
+        setMessage(`${meters}メートル！ スタミナ +${pts}（ゴールは100m）`);
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(0);
+          onClear(pts, false);
         }
         return;
       }
@@ -1192,7 +1218,7 @@ function RunningTraining({
         {message}
       </div>
       <div className="note">
-        タップ＝小ジャンプ／長押し＝大ジャンプ　100mゴールで スタミナ +1！
+        タップ＝小ジャンプ／長押し＝大ジャンプ　距離で スタミナUP。100mゴールで 種も ゲット！
       </div>
 
       {!started && !finished && (
