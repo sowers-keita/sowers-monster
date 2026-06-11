@@ -410,7 +410,39 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* 進化 */}
+          <div className="card">
+            <div className="title">ステータス</div>
+
+            <Status
+              label="パワー"
+              current={monster.power}
+              max={monster.power_max}
+              color="#ff4b35"
+            />
+
+            <Status
+              label="スタミナ"
+              current={monster.stamina}
+              max={monster.stamina_max}
+              color="#34b85a"
+            />
+
+            <Status
+              label="スピード"
+              current={monster.speed}
+              max={monster.speed_max}
+              color="#2f8ee5"
+            />
+
+            <Status
+              label="テクニック"
+              current={monster.technique}
+              max={monster.technique_max}
+              color="#9b51e0"
+            />
+          </div>
+
+          {/* 進化（ステータスの下） */}
           {canEvolve && (
             <button
               className="button evo-ready"
@@ -456,38 +488,6 @@ export default function HomePage() {
           )}
 
           <div className="card">
-            <div className="title">ステータス</div>
-
-            <Status
-              label="パワー"
-              current={monster.power}
-              max={monster.power_max}
-              color="#ff4b35"
-            />
-
-            <Status
-              label="スタミナ"
-              current={monster.stamina}
-              max={monster.stamina_max}
-              color="#34b85a"
-            />
-
-            <Status
-              label="スピード"
-              current={monster.speed}
-              max={monster.speed_max}
-              color="#2f8ee5"
-            />
-
-            <Status
-              label="テクニック"
-              current={monster.technique}
-              max={monster.technique_max}
-              color="#9b51e0"
-            />
-          </div>
-
-          <div className="card">
             <div className="title">バトル情報</div>
 
             <div
@@ -507,36 +507,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          <MenuButton
-            className="button"
-            icon="🎯"
-            label="ミッション"
-            onClick={() => router.push("/mission")}
-          />
-          <MenuButton
-            className="button orange"
-            icon="💪"
-            label="トレーニング"
-            onClick={() => router.push("/training")}
-          />
-          <MenuButton
-            className="button red"
-            icon="⚔️"
-            label="バトル"
-            onClick={() => router.push("/battle")}
-          />
-          <MenuButton
-            className="button blue"
-            icon="🎒"
-            label="もちもの"
-            onClick={() => router.push("/inventory")}
-          />
-          <MenuButton
-            className="button orange"
-            icon="📖"
-            label="ずかん"
-            onClick={() => router.push("/zukan")}
-          />
         </div>
       </div>
 
@@ -663,39 +633,6 @@ export default function HomePage() {
 
       <BottomNav active="home" />
     </main>
-  );
-}
-
-// 文字が苦手な子でも分かるよう、大きな絵アイコン付きのボタン
-function MenuButton({
-  className,
-  icon,
-  label,
-  onClick
-}: {
-  className: string;
-  icon: string;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      className={className}
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 14,
-        minHeight: 70,
-        fontSize: 24
-      }}
-    >
-      <span style={{ fontSize: 40, lineHeight: 1 }} aria-hidden>
-        {icon}
-      </span>
-      <span>{label}</span>
-    </button>
   );
 }
 
