@@ -80,6 +80,13 @@ export default function TrainingPage() {
 
   useEffect(() => {
     loadMonster();
+    if (typeof window !== "undefined") {
+      const t = new URLSearchParams(window.location.search).get("t");
+      if (t === "friend" || t === "running" || t === "stop" || t === "thread") {
+        setSelected(t);
+        setMode("playing");
+      }
+    }
   }, []);
 
   async function loadMonster() {
