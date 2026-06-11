@@ -273,7 +273,13 @@ function ZukanCard({
         }}
       >
         {found ? (
-          <MonsterIcon color={monster.eggColor} size={78} />
+          <MonsterIcon
+            color={monster.eggColor}
+            size={78}
+            stage={monster.stage}
+            speed={[3, 5].includes((monster.no - 1) % 6) ? 0 : 1}
+            technique={[3, 5].includes((monster.no - 1) % 6) ? 1 : 0}
+          />
         ) : (
           <div
             style={{
