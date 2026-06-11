@@ -43,6 +43,10 @@ type TopRow = {
   battle_power: number;
   child_id: string;
   child_name: string;
+  egg_color: EggColor;
+  stage: string;
+  speed: number;
+  technique: number;
 };
 
 const EVO_THRESHOLD: Record<string, number> = {
@@ -196,7 +200,9 @@ export default function HomePage() {
 
     const { data: topData } = await supabase
       .from("monsters")
-      .select("id, name, battle_power, child_id, children ( name )")
+      .select(
+        "id, name, battle_power, child_id, egg_color, stage, speed, technique, children ( name )"
+      )
       .eq("is_active", true)
       .order("battle_power", { ascending: false })
       .limit(5);
@@ -208,7 +214,11 @@ export default function HomePage() {
         name: r.name,
         battle_power: r.battle_power,
         child_id: r.child_id,
-        child_name: r.children?.name || "なまえ未設定"
+        child_name: r.children?.name || "なまえ未設定",
+        egg_color: r.egg_color,
+        stage: r.stage,
+        speed: r.speed,
+        technique: r.technique
       }))
     );
 
@@ -720,7 +730,7 @@ export default function HomePage() {
                     key={row.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "28px 1fr auto",
+                      gridTemplateColumns: "26px 34px 1fr auto",
                       gap: 8,
                       alignItems: "center",
                       background: mine ? "#ffe0a3" : "#faf6ef",
@@ -745,6 +755,28 @@ export default function HomePage() {
                     >
                       {i + 1}位
                     </span>
+
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        background: "#fff1cf",
+                        border: "2px solid #2b1b10",
+                        borderRadius: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden"
+                      }}
+                    >
+                      <MonsterIcon
+                        color={row.egg_color}
+                        size={30}
+                        stage={row.stage}
+                        speed={row.speed}
+                        technique={row.technique}
+                      />
+                    </div>
                     <span
                       style={{
                         fontSize: 13,
