@@ -197,6 +197,12 @@ export default function BattlePage() {
 
   useEffect(() => {
     load();
+    if (typeof window !== "undefined") {
+      const mode = new URLSearchParams(window.location.search).get("mode");
+      if (mode === "online") {
+        setView("online");
+      }
+    }
   }, []);
 
   async function load() {
