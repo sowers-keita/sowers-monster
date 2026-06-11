@@ -432,7 +432,7 @@ export default function HomePage() {
                   cursor: departureReady ? "pointer" : "default"
                 }}
               >
-                {departureReady ? "🌅 旅立ちの日！" : `🌅 あと ${daysLeft}日`}
+                {departureReady ? "旅立ちの日！" : `旅立ちまであと${daysLeft}日`}
               </div>
 
               <div className="monster-walker">
@@ -661,10 +661,6 @@ export default function HomePage() {
                 </div>
               );
             })}
-
-            <div className="note" style={{ marginTop: 2 }}>
-              🌱で限界アップ・💪で鍛える
-            </div>
           </div>
 
           {/* ===== バトル（戦闘力＋上位5名＋ボタン） ===== */}
