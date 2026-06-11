@@ -50,7 +50,7 @@ const zukanMaster: ZukanMaster[] = [
 export default function ZukanPage() {
   const router = useRouter();
 
-  const [records, setRecords] = useState<ZukanRecord[]>([]);
+  const [foundNos, setFoundNos] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<"all" | "found" | "locked">("all");
   const [loading, setLoading] = useState(true);
 
@@ -66,9 +66,10 @@ export default function ZukanPage() {
       return;
     }
 
+    // 1度でも育てたモンスターの「育成歴」から図鑑を埋める
     const { data, error } = await supabase
-      .from("zukan")
-      .select("id, monster_name, monster_type, stage")
+      .from("monsters")
+      .select("egg_color, stage, speed, technique")
       .eq("child_id", child.id);
 
     if (error) {
@@ -77,17 +78,44 @@ export default function ZukanPage() {
       return;
     }
 
-    setRecords((data || []) as ZukanRecord[]);
+    const rank: Record<string, number> = {
+      スタート期: 0,
+      ビギナー期: 1,
+      ヒーロー期: 2,
+      覚醒期: 3
+    };
+    const baseNo: Record<string, number> = { red: 1, blue: 7, pink: 13 };
+
+    const found = new Set<number>();
+    (data || []).forEach((row) => {
+      const m = row as {
+        egg_color: string;
+        stage: string;
+        speed: number;
+        technique: number;
+      };
+      const base = baseNo[m.egg_color];
+      if (base === undefined) {
+        return;
+      }
+      const r = rank[m.stage] ?? 0;
+      const branchA = (m.speed ?? 0) >= (m.technique ?? 0);
+
+      found.add(base); // スタート期
+      if (r >= 1) found.add(base + 1); // ビギナー期
+      if (r >= 2) found.add(branchA ? base + 2 : base + 3); // ヒーロー期
+      if (r >= 3) found.add(branchA ? base + 4 : base + 5); // 覚醒期
+    });
+
+    setFoundNos(found);
     setLoading(false);
   }
 
-  const foundNames = useMemo(() => {
-    return new Set(records.map((record) => record.monster_name));
-  }, [records]);
+  const foundNames = { size: foundNos.size };
 
   const filteredMonsters = useMemo(() => {
     return zukanMaster.filter((monster) => {
-      const found = foundNames.has(monster.name);
+      const found = foundNos.has(monster.no);
 
       if (filter === "found") {
         return found;
@@ -99,7 +127,7 @@ export default function ZukanPage() {
 
       return true;
     });
-  }, [filter, foundNames]);
+  }, [filter, foundNos]);
 
   if (loading) {
     return (
@@ -160,7 +188,7 @@ export default function ZukanPage() {
             }}
           >
             {filteredMonsters.map((monster) => {
-              const found = foundNames.has(monster.name);
+              const found = foundNos.has(monster.no);
 
               return (
                 <ZukanCard
