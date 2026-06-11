@@ -31,6 +31,7 @@ export default function InventoryPage() {
   const [monster, setMonster] = useState<ActiveMonster | null>(null);
   const [seeds, setSeeds] = useState<SeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rainbowSeed, setRainbowSeed] = useState<SeedItem | null>(null);
 
   useEffect(() => {
     load();
@@ -67,6 +68,12 @@ export default function InventoryPage() {
       return;
     }
 
+    // 虹の種は、伸ばす能力を選んでもらう
+    if (seedType === "rainbow") {
+      setRainbowSeed(seed);
+      return;
+    }
+
     const amount = getSeedMaxIncrease(seedType);
 
     const update: Partial<ActiveMonster> = {};
@@ -94,10 +101,6 @@ export default function InventoryPage() {
       update.technique_max = monster.technique_max + amount;
     }
 
-    if (seedType === "rainbow") {
-      update.power_max = monster.power_max + amount;
-    }
-
     const { error } = await supabase
       .from("monsters")
       .update(update)
@@ -112,6 +115,38 @@ export default function InventoryPage() {
 
     alert(`${seedLabels[seedType]}を使いました！`);
 
+    await load();
+  }
+
+  async function applyRainbow(
+    stat: "power" | "stamina" | "speed" | "technique"
+  ) {
+    if (!monster || !rainbowSeed) {
+      return;
+    }
+
+    const amount = 10;
+    const update: Partial<ActiveMonster> = {};
+
+    if (stat === "power") update.power_max = monster.power_max + amount;
+    if (stat === "stamina") update.stamina_max = monster.stamina_max + amount;
+    if (stat === "speed") update.speed_max = monster.speed_max + amount;
+    if (stat === "technique")
+      update.technique_max = monster.technique_max + amount;
+
+    const { error } = await supabase
+      .from("monsters")
+      .update(update)
+      .eq("id", monster.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await consumeSeed(rainbowSeed.id, rainbowSeed.count - 1);
+    setRainbowSeed(null);
+    alert("虹の種を使いました！");
     await load();
   }
 
@@ -165,6 +200,75 @@ export default function InventoryPage() {
           </button>
         </div>
       </div>
+
+      {/* 虹の種：能力を選ぶ */}
+      {rainbowSeed && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(18,10,28,0.86)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24
+          }}
+        >
+          <div
+            style={{
+              color: "white",
+              fontSize: 22,
+              fontWeight: 900,
+              marginBottom: 16,
+              textAlign: "center"
+            }}
+          >
+            🌈 どの のうりょくを +10 する？
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              width: "100%",
+              maxWidth: 320
+            }}
+          >
+            <button className="button red" onClick={() => applyRainbow("power")}>
+              パワー
+            </button>
+            <button
+              className="button"
+              onClick={() => applyRainbow("stamina")}
+            >
+              スタミナ
+            </button>
+            <button
+              className="button blue"
+              onClick={() => applyRainbow("speed")}
+            >
+              スピード
+            </button>
+            <button
+              className="button orange"
+              onClick={() => applyRainbow("technique")}
+            >
+              テクニック
+            </button>
+          </div>
+
+          <button
+            className="button gray"
+            style={{ maxWidth: 320, width: "100%" }}
+            onClick={() => setRainbowSeed(null)}
+          >
+            やめる
+          </button>
+        </div>
+      )}
 
       <BottomNav active="inventory" />
     </main>
