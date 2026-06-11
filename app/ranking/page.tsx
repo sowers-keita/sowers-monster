@@ -261,10 +261,12 @@ function Tab({
         borderRadius: 12,
         background: active ? "#ffd447" : "white",
         color: "#2b1b10",
-        fontSize: 12,
+        fontSize: 10.5,
         fontWeight: 900,
         boxShadow: "0 3px 0 #2b1b10",
-        padding: 0
+        padding: 0,
+        whiteSpace: "nowrap",
+        letterSpacing: "-0.5px"
       }}
     >
       {label}
