@@ -74,13 +74,13 @@ function EggHatchInner() {
       egg_color: egg,
       stage: "スタート期",
       power: 0,
-      power_max: 10,
+      power_max: 20,
       stamina: 0,
-      stamina_max: 10,
+      stamina_max: 20,
       speed: 0,
-      speed_max: 10,
+      speed_max: 20,
       technique: 0,
-      technique_max: 10,
+      technique_max: 20,
       battle_power: 0,
       is_active: true
     });
