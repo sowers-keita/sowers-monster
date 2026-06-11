@@ -139,22 +139,46 @@ export default function ParentSettingsPage() {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const { error } = await supabase.from("missions").insert({
-      child_id: childId,
-      mission_type: "parent",
-      title: missionTitle,
-      description: missionDescription,
-      reward_seed_type: rewardSeedType,
-      reward_amount: rewardAmount,
-      mission_date: today
-    });
+    // 今日の保護者ミッションは1つだけ。すでにあれば上書き、なければ新規。
+    const { data: existing } = await supabase
+      .from("missions")
+      .select("id")
+      .eq("child_id", childId)
+      .eq("mission_type", "parent")
+      .eq("mission_date", today)
+      .order("id")
+      .limit(1)
+      .maybeSingle();
+
+    let error;
+    if (existing) {
+      ({ error } = await supabase
+        .from("missions")
+        .update({
+          title: missionTitle,
+          description: missionDescription,
+          reward_seed_type: rewardSeedType,
+          reward_amount: rewardAmount
+        })
+        .eq("id", existing.id));
+    } else {
+      ({ error } = await supabase.from("missions").insert({
+        child_id: childId,
+        mission_type: "parent",
+        title: missionTitle,
+        description: missionDescription,
+        reward_seed_type: rewardSeedType,
+        reward_amount: rewardAmount,
+        mission_date: today
+      }));
+    }
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    alert("保護者ミッションを保存しました");
+    alert("今日の保護者ミッションを保存しました（1日1つ）");
     router.push("/mission");
   }
 
