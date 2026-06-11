@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 
 type BottomNavProps = {
-  active: "home" | "qr" | "ranking" | "mission" | "inventory";
+  active: "home" | "versus" | "ranking" | "mission" | "inventory";
 };
 
 export default function BottomNav({ active }: BottomNavProps) {
@@ -11,7 +11,7 @@ export default function BottomNav({ active }: BottomNavProps) {
 
   const items = [
     { key: "home", label: "ホーム", href: "/home" },
-    { key: "qr", label: "QR", href: "/qr" },
+    { key: "versus", label: "対戦", href: "/versus" },
     { key: "ranking", label: "ランキング", href: "/ranking" },
     { key: "mission", label: "ミッション", href: "/mission" },
     { key: "inventory", label: "持ち物", href: "/inventory" }
