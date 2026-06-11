@@ -15,25 +15,28 @@ export default function EggSelectPage() {
     <Phone title="新しい卵を選ぶ">
       <div className="card">
         <div className="title">最初の卵を選ぼう</div>
+        <div className="note">
+          どんな モンスターが 生まれるかは、生まれてからの おたのしみ！
+        </div>
 
         <EggCard
           color="red"
           title="赤い卵"
-          description="サル系モンスターが生まれます。"
+          description="あかい モンスターが 生まれるよ。"
           onClick={() => selectEgg("red")}
         />
 
         <EggCard
           color="blue"
           title="青い卵"
-          description="犬系モンスターが生まれます。"
+          description="あおい モンスターが 生まれるよ。"
           onClick={() => selectEgg("blue")}
         />
 
         <EggCard
           color="pink"
           title="ピンクの卵"
-          description="鳥系モンスターが生まれます。"
+          description="ピンクの モンスターが 生まれるよ。"
           onClick={() => selectEgg("pink")}
         />
       </div>
