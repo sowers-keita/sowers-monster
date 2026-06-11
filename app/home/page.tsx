@@ -21,6 +21,7 @@ type HomeMonster = {
   technique: number;
   technique_max: number;
   battle_power: number;
+  last_growth_date?: string | null;
 };
 
 // 進化のしくみ：4つの能力の合計が一定値に達すると次の段階へ
@@ -100,7 +101,40 @@ export default function HomePage() {
       return;
     }
 
-    setMonster(activeMonster as HomeMonster);
+    let m = activeMonster as HomeMonster;
+
+    // 1日にそれぞれの限界値が +1 ずつ成長
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    if (m.last_growth_date) {
+      const last = new Date(m.last_growth_date);
+      last.setHours(0, 0, 0, 0);
+      const days = Math.floor(
+        (today.getTime() - last.getTime()) / 86400000
+      );
+
+      if (days > 0) {
+        const grown = {
+          power_max: m.power_max + days,
+          stamina_max: m.stamina_max + days,
+          speed_max: m.speed_max + days,
+          technique_max: m.technique_max + days,
+          last_growth_date: todayStr
+        };
+        await supabase.from("monsters").update(grown).eq("id", m.id);
+        m = { ...m, ...grown };
+      }
+    } else {
+      await supabase
+        .from("monsters")
+        .update({ last_growth_date: todayStr })
+        .eq("id", m.id);
+      m = { ...m, last_growth_date: todayStr };
+    }
+
+    setMonster(m);
     setLoading(false);
   }
 
@@ -148,9 +182,18 @@ export default function HomePage() {
     setEvolving("glow");
     await sleep(1300);
 
+    // 進化すると、すべての限界値が +20
+    const updated = {
+      stage: ns,
+      power_max: monster.power_max + 20,
+      stamina_max: monster.stamina_max + 20,
+      speed_max: monster.speed_max + 20,
+      technique_max: monster.technique_max + 20
+    };
+
     const { error } = await supabase
       .from("monsters")
-      .update({ stage: ns })
+      .update(updated)
       .eq("id", monster.id);
 
     if (error) {
@@ -159,7 +202,7 @@ export default function HomePage() {
       return;
     }
 
-    setMonster({ ...monster, stage: ns });
+    setMonster({ ...monster, ...updated });
     setEvolving("done");
   }
 
