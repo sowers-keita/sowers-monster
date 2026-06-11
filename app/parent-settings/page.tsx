@@ -1,6 +1,6 @@
 "use client";
 
-import { SeedType } from "@/lib/game";
+import { SeedType, ymdLocal } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -137,7 +137,7 @@ export default function ParentSettingsPage() {
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ymdLocal(new Date());
 
     // 今日の保護者ミッションは1つだけ。すでにあれば上書き、なければ新規。
     const { data: existing } = await supabase
@@ -178,7 +178,7 @@ export default function ParentSettingsPage() {
       return;
     }
 
-    alert("今日の保護者ミッションを保存しました（1日1つ）");
+    alert("今日の おうちミッションを 保存しました（1日1つ）");
     router.push("/mission");
   }
 
@@ -199,7 +199,7 @@ export default function ParentSettingsPage() {
 
         <div className="content">
           <div className="card">
-            <div className="title">保護者ミッション設定</div>
+            <div className="title">おうちミッション設定</div>
 
             <label className="label">ミッション名</label>
             <input
