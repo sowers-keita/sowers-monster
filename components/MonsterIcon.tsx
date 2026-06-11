@@ -1,9 +1,12 @@
 import { EggColor } from "@/lib/types";
 
+type Expression = "normal" | "happy" | "angry" | "sad";
+
 type MonsterIconProps = {
   color?: EggColor;
   size?: number;
   happy?: boolean;
+  expression?: Expression;
   stage?: string;
   speed?: number;
   technique?: number;
@@ -21,12 +24,14 @@ export default function MonsterIcon({
   color = "red",
   size = 120,
   happy = false,
+  expression,
   stage,
   speed = 0,
   technique = 0
 }: MonsterIconProps) {
   const key = formKey(stage, speed, technique);
-  const src = `/monsters/${color}_${key}_${happy ? "happy" : "normal"}.png`;
+  const expr: Expression = expression ?? (happy ? "happy" : "normal");
+  const src = `/monsters/${color}_${key}_${expr}.png`;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
