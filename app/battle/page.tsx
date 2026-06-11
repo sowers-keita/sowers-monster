@@ -2,13 +2,14 @@
 
 import BottomNav from "@/components/BottomNav";
 import MonsterIcon from "@/components/MonsterIcon";
-import { ActiveMonster, getMyActiveMonster } from "@/lib/game";
+import { ActiveMonster, getMyActiveMonster, getMyChild } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { EggColor } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Opponent = {
+  id: string;
   name: string;
   classroom: string;
   monsterName: string;
@@ -20,6 +21,41 @@ type Opponent = {
   technique: number;
 };
 
+// ===== マッチング履歴（同じ相手ばかりにならないように） =====
+const SAME_OPP_DAILY_LIMIT = 2; // 同じ相手とは1日2回まで
+
+function battleToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+function recentKey(childId: string) {
+  return `swm_recent_opp_${childId}`;
+}
+function getRecentOpp(childId: string): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(recentKey(childId)) || "[]");
+  } catch {
+    return [];
+  }
+}
+function oppDayCount(childId: string, oppId: string) {
+  return Number(
+    localStorage.getItem(`swm_oppday_${childId}_${oppId}_${battleToday()}`) || "0"
+  );
+}
+function recordOpponent(childId: string, oppId: string) {
+  if (!oppId) {
+    return;
+  }
+  const k = `swm_oppday_${childId}_${oppId}_${battleToday()}`;
+  localStorage.setItem(k, String(oppDayCount(childId, oppId) + 1));
+  let recent = getRecentOpp(childId);
+  recent.push(oppId);
+  if (recent.length > 6) {
+    recent = recent.slice(-6);
+  }
+  localStorage.setItem(recentKey(childId), JSON.stringify(recent));
+}
+
 // 体力（HP）：基礎体力100＋スタミナ1ごとに+10
 function hpFromStamina(stamina: number) {
   return 100 + Math.max(0, stamina) * 10;
@@ -27,6 +63,7 @@ function hpFromStamina(stamina: number) {
 
 const opponents: Opponent[] = [
   {
+    id: "cpu_haruto",
     name: "はると",
     classroom: "徳島体操",
     monsterName: "ワンダー",
@@ -38,6 +75,7 @@ const opponents: Opponent[] = [
     technique: 12
   },
   {
+    id: "cpu_mio",
     name: "みお",
     classroom: "北島教室",
     monsterName: "ピヨン",
@@ -49,6 +87,7 @@ const opponents: Opponent[] = [
     technique: 18
   },
   {
+    id: "cpu_souta",
     name: "そうた",
     classroom: "Sowers Club",
     monsterName: "シャドウハウンド",
@@ -60,6 +99,7 @@ const opponents: Opponent[] = [
     technique: 24
   },
   {
+    id: "cpu_yui",
     name: "ゆい",
     classroom: "阿南教室",
     monsterName: "モンガード",
@@ -84,9 +124,50 @@ type RealMonsterRow = {
   child_id: string;
   children?: {
     name: string;
+    classroom_id?: string | null;
     classrooms?: { name: string } | null;
   } | null;
 };
+
+// 50%は同じ教室・50%は他教室から。同じ相手の連続・1日2回超えを避ける。
+function pickOpponentRow(
+  rows: RealMonsterRow[],
+  myClassroomId: string | null,
+  myChildId: string
+): RealMonsterRow | null {
+  const recent = getRecentOpp(myChildId);
+  const lastOpp = recent[recent.length - 1];
+
+  // 1日2回まで＆直前の相手は除外
+  const pool = rows.filter(
+    (r) => oppDayCount(myChildId, r.id) < SAME_OPP_DAILY_LIMIT && r.id !== lastOpp
+  );
+
+  if (pool.length === 0) {
+    return null;
+  }
+
+  const same = pool.filter(
+    (r) => r.children?.classroom_id && r.children.classroom_id === myClassroomId
+  );
+  const other = pool.filter(
+    (r) => !(r.children?.classroom_id && r.children.classroom_id === myClassroomId)
+  );
+
+  const useSame = Math.random() < 0.5;
+  const primary = useSame ? same : other;
+  const secondary = useSame ? other : same;
+  let cand = primary.length > 0 ? primary : secondary;
+  if (cand.length === 0) {
+    cand = pool;
+  }
+
+  // 直近で当たった相手は優先度を下げる
+  const fresh = cand.filter((r) => !recent.includes(r.id));
+  const finalPool = fresh.length > 0 ? fresh : cand;
+
+  return finalPool[Math.floor(Math.random() * finalPool.length)];
+}
 
 export default function BattlePage() {
   const router = useRouter();
@@ -118,6 +199,7 @@ export default function BattlePage() {
   }, []);
 
   async function load() {
+    const child = await getMyChild();
     const current = await getMyActiveMonster();
 
     if (!current) {
@@ -128,24 +210,26 @@ export default function BattlePage() {
     setMonster(current);
     setPlayerHp(hpFromStamina(current.stamina));
 
+    const myClassroomId = child?.classroom_id || null;
+
     // 他の登録ユーザーのモンスターから対戦相手を探す
     const { data: others } = await supabase
       .from("monsters")
       .select(
         `id, name, egg_color, power, stamina, stamina_max, speed, technique, child_id,
-         children ( name, classrooms ( name ) )`
+         children ( name, classroom_id, classrooms ( name ) )`
       )
       .eq("is_active", true)
       .neq("child_id", current.child_id);
 
+    const rows = (others || []) as unknown as RealMonsterRow[];
+    const pick = pickOpponentRow(rows, myClassroomId, current.child_id);
+
     let chosen: Opponent;
 
-    if (others && others.length > 0) {
-      const pick = others[
-        Math.floor(Math.random() * others.length)
-      ] as unknown as RealMonsterRow;
-
+    if (pick) {
       chosen = {
+        id: pick.id,
         name: pick.children?.name || "だれか",
         classroom: pick.children?.classrooms?.name || "Sowers Club",
         monsterName: pick.name,
@@ -157,8 +241,12 @@ export default function BattlePage() {
         technique: pick.technique + 10
       };
     } else {
-      // まだ他の登録ユーザーがいないときはCPUと対戦
-      chosen = opponents[Math.floor(Math.random() * opponents.length)];
+      // 相手がいない／全員1日2回に達したとき等はCPUと対戦（直前の相手は避ける）
+      const recent = getRecentOpp(current.child_id);
+      const lastOpp = recent[recent.length - 1];
+      const cpuPool = opponents.filter((o) => o.id !== lastOpp);
+      const cpu = cpuPool.length > 0 ? cpuPool : opponents;
+      chosen = cpu[Math.floor(Math.random() * cpu.length)];
     }
 
     setOpponent(chosen);
@@ -352,6 +440,11 @@ export default function BattlePage() {
     }
 
     setBattlesToday((prev) => prev + 1);
+
+    // 同じ相手とのマッチング回数・直近履歴を記録
+    if (opponent) {
+      recordOpponent(monster.child_id, opponent.id);
+    }
 
     setMonster({
       ...monster,
