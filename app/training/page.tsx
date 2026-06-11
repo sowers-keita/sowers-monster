@@ -5,8 +5,11 @@ import MonsterIcon from "@/components/MonsterIcon";
 import {
   ActiveMonster,
   addSeedToChild,
+  getGameRanking,
   getMyActiveMonster,
-  saveGameScore
+  mondayStart,
+  saveGameScore,
+  ymdLocal
 } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -72,6 +75,7 @@ export default function TrainingPage() {
   const [earned, setEarned] = useState(0);
   const [gotSeed, setGotSeed] = useState(false);
   const [resultText, setResultText] = useState("");
+  const [rankText, setRankText] = useState("");
   const [doneToday, setDoneToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -111,14 +115,22 @@ export default function TrainingPage() {
       return;
     }
 
-    // ミニゲームの今週のベストスコアを保存（ランキング用）
+    // ミニゲームの今週のベストスコアを保存し、今週の順位を出す
+    let rank = "";
     if (score && score > 0) {
       try {
         await saveGameScore(monster.child_id, config.type, score);
+        const ws = ymdLocal(mondayStart());
+        const ranking = await getGameRanking(config.type, ws, 500);
+        const idx = ranking.findIndex((r) => r.child_id === monster.child_id);
+        if (idx >= 0) {
+          rank = `今週のランキング ${idx + 1}位 / ${ranking.length}人中`;
+        }
       } catch {
-        // 保存に失敗しても続行
+        // 失敗しても続行
       }
     }
+    setRankText(rank);
 
     // 能力値（現在値）を上げる
     if (statPoints > 0) {
@@ -279,6 +291,24 @@ export default function TrainingPage() {
                   }}
                 >
                   {resultText}
+                </div>
+              )}
+
+              {rankText && (
+                <div
+                  style={{
+                    margin: "8px auto 0",
+                    display: "inline-block",
+                    background: "#fff1cf",
+                    border: "3px solid #2b1b10",
+                    borderRadius: 999,
+                    padding: "6px 16px",
+                    fontSize: 16,
+                    fontWeight: 900,
+                    color: "#2b1b10"
+                  }}
+                >
+                  🏅 {rankText}
                 </div>
               )}
 
