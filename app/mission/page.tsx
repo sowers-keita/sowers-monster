@@ -139,9 +139,10 @@ export default function MissionPage() {
   }
 
   const hqMissions = missions.filter((mission) => mission.mission_type === "hq");
-  const parentMissions = missions.filter(
-    (mission) => mission.mission_type === "parent"
-  );
+  // 保護者ミッションは1日1つだけ表示
+  const parentMissions = missions
+    .filter((mission) => mission.mission_type === "parent")
+    .slice(0, 1);
 
   return (
     <main className="page">
