@@ -1083,7 +1083,7 @@ function RunningTraining({
             height: CHAR_SIZE
           }}
         >
-          <MonsterIcon color="red" size={CHAR_SIZE} />
+          <MonsterIcon color="red" size={CHAR_SIZE} flip />
         </div>
 
         {/* 距離表示 */}
