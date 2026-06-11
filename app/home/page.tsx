@@ -2,6 +2,12 @@
 
 import BottomNav from "@/components/BottomNav";
 import MonsterIcon from "@/components/MonsterIcon";
+import {
+  WeeklyRewardResult,
+  claimWeeklyGameRewards,
+  gameLabels,
+  seedLabels
+} from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { EggColor } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -21,8 +27,21 @@ type HomeMonster = {
   technique: number;
   technique_max: number;
   battle_power: number;
+  created_at: string;
   last_growth_date?: string | null;
 };
+
+// 育成開始（卵がかえった日）から1ヶ月後が旅立ちの日
+function daysUntilDeparture(createdAt: string): number {
+  const dep = new Date(createdAt);
+  dep.setMonth(dep.getMonth() + 1);
+  dep.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.ceil((dep.getTime() - today.getTime()) / 86400000);
+}
 
 // 進化のしくみ：4つの能力の合計が一定値に達すると次の段階へ
 const EVO_THRESHOLD: Record<string, number> = {
@@ -51,6 +70,7 @@ export default function HomePage() {
   const [savingName, setSavingName] = useState(false);
   const [happy, setHappy] = useState(false);
   const [evolving, setEvolving] = useState<"none" | "glow" | "done">("none");
+  const [weeklyRewards, setWeeklyRewards] = useState<WeeklyRewardResult[]>([]);
 
   useEffect(() => {
     loadHome();
@@ -87,6 +107,16 @@ export default function HomePage() {
     }
 
     setChildName(child.name);
+
+    // 先週のミニゲーム上位3人なら、種を自動で受け取る（1回だけ）
+    try {
+      const awarded = await claimWeeklyGameRewards(child.id);
+      if (awarded.length > 0) {
+        setWeeklyRewards(awarded);
+      }
+    } catch {
+      // 失敗しても続行
+    }
 
     const { data: activeMonster } = await supabase
       .from("monsters")
@@ -225,6 +255,9 @@ export default function HomePage() {
     return null;
   }
 
+  const daysLeft = daysUntilDeparture(monster.created_at);
+  const departureReady = daysLeft <= 0;
+
   const total =
     monster.power + monster.stamina + monster.speed + monster.technique;
   const threshold = EVO_THRESHOLD[monster.stage];
@@ -343,6 +376,45 @@ export default function HomePage() {
 
             <div className="note">{childName}さんのモンスター</div>
           </div>
+
+          {/* 旅立ちカウントダウン（育成開始から1ヶ月） */}
+          {departureReady ? (
+            <div
+              className="card"
+              style={{ textAlign: "center", background: "#ffe3e0" }}
+            >
+              <div
+                style={{ fontSize: 22, fontWeight: 900, color: "#c0392b" }}
+              >
+                今日が 旅立ちの日！
+              </div>
+              <div className="note" style={{ marginTop: 4 }}>
+                たくさん育ててくれてありがとう。旅立ちを見送ろう。
+              </div>
+              <button
+                className="button red"
+                onClick={() => router.push("/journey")}
+              >
+                🌅 旅立ちを 見送る
+              </button>
+            </div>
+          ) : (
+            <div
+              className="card"
+              style={{ textAlign: "center", background: "#eef7ff" }}
+            >
+              <div style={{ fontWeight: 900, color: "#2b1b10" }}>
+                旅立ちまで あと{" "}
+                <span style={{ color: "#2f8ee5", fontSize: 22 }}>
+                  {daysLeft}
+                </span>{" "}
+                日
+              </div>
+              <div className="note" style={{ marginTop: 4 }}>
+                旅立ちの日まで たくさん 育てよう・バトルしよう！
+              </div>
+            </div>
+          )}
 
           {/* 進化 */}
           {canEvolve && (
@@ -476,6 +548,74 @@ export default function HomePage() {
           />
         </div>
       </div>
+
+      {/* 先週のミニゲーム上位3人 種ゲット！ */}
+      {weeklyRewards.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(18,10,28,0.88)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            textAlign: "center"
+          }}
+        >
+          <div style={{ fontSize: 54 }}>🏆</div>
+          <div
+            style={{
+              color: "white",
+              fontSize: 24,
+              fontWeight: 900,
+              marginTop: 8,
+              lineHeight: 1.5
+            }}
+          >
+            先週のミニゲーム ランキング！
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              width: "100%",
+              maxWidth: 320,
+              display: "grid",
+              gap: 10
+            }}
+          >
+            {weeklyRewards.map((r) => (
+              <div
+                key={r.gameType}
+                style={{
+                  background: "white",
+                  border: "4px solid #2b1b10",
+                  borderRadius: 16,
+                  padding: 12,
+                  fontWeight: 900,
+                  color: "#2b1b10"
+                }}
+              >
+                {gameLabels[r.gameType]} {r.rank}位！
+                <div style={{ color: "#ff7a00", marginTop: 4 }}>
+                  🌱 {seedLabels[r.seed]} を 1こ ゲット！
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="button"
+            style={{ maxWidth: 260, marginTop: 20 }}
+            onClick={() => setWeeklyRewards([])}
+          >
+            やったー！
+          </button>
+        </div>
+      )}
 
       {/* 進化アニメーションのオーバーレイ */}
       {evolving !== "none" && (
