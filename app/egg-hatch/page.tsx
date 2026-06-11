@@ -125,6 +125,24 @@ function EggHatchInner() {
               placeholder="例：もんちゃん"
             />
 
+            <div
+              style={{
+                marginTop: 10,
+                background: "#fff3e0",
+                border: "3px solid #2b1b10",
+                borderRadius: 14,
+                padding: 10,
+                fontSize: 14,
+                fontWeight: 800,
+                color: "#a85a00",
+                lineHeight: 1.5
+              }}
+            >
+              🌅 このモンスターは <b>1ヶ月後に 旅立ちます</b>。
+              <br />
+              それまで たくさん 育てて バトルしよう！
+            </div>
+
             <button className="button orange" onClick={hatch} disabled={saving}>
               {saving ? "保存中…" : "この名前で生まれる"}
             </button>
@@ -133,9 +151,24 @@ function EggHatchInner() {
           <>
             <MonsterIcon color={egg} size={130} />
             <div className="title" style={{ marginTop: 20 }}>
-              {monsterByEgg[egg].name} が生まれた！
+              {name.trim() || monsterByEgg[egg].name} が生まれた！
             </div>
             <div className="note">これから一緒に育てよう！</div>
+            <div
+              style={{
+                marginTop: 10,
+                background: "#fff3e0",
+                border: "3px solid #2b1b10",
+                borderRadius: 14,
+                padding: 10,
+                fontSize: 14,
+                fontWeight: 800,
+                color: "#a85a00",
+                lineHeight: 1.5
+              }}
+            >
+              🌅 旅立ちは <b>1ヶ月後</b>。それまで いっぱい 思い出を つくろう！
+            </div>
             <button className="button" onClick={() => router.push("/home")}>
               ホームへ
             </button>
