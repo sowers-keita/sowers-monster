@@ -417,6 +417,7 @@ export default function BattlePage() {
                   stage={monster.stage}
                   speed={monster.speed}
                   technique={monster.technique}
+                  flip
                 />
               </div>
               <div style={{ fontWeight: 900, color: "#2b1b10" }}>
