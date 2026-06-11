@@ -445,6 +445,26 @@ button:active {
   }
 }
 
+/* ===== スマホはフル画面（枠の中に枠…をやめる） ===== */
+@media (max-width: 480px) {
+  .page {
+    padding: 0;
+    align-items: stretch;
+  }
+  .phone {
+    max-width: 100%;
+    min-height: 100vh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .bottom-nav {
+    width: calc(100% - 16px);
+    max-width: 100%;
+    bottom: 8px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .monster-walker,
   .monster-hopper,
