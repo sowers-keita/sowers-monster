@@ -10,6 +10,7 @@ type MonsterIconProps = {
   stage?: string;
   speed?: number;
   technique?: number;
+  flip?: boolean; // 左右反転（右向きにする）
 };
 
 // 進化段階＋分岐（A=正義型/スピード型, B=悪型/テクニック型）から画像を決める
@@ -27,7 +28,8 @@ export default function MonsterIcon({
   expression,
   stage,
   speed = 0,
-  technique = 0
+  technique = 0,
+  flip = false
 }: MonsterIconProps) {
   const key = formKey(stage, speed, technique);
   const expr: Expression = expression ?? (happy ? "happy" : "normal");
@@ -46,7 +48,8 @@ export default function MonsterIcon({
         objectFit: "contain",
         imageRendering: "pixelated",
         display: "block",
-        margin: "0 auto"
+        margin: "0 auto",
+        transform: flip ? "scaleX(-1)" : undefined
       }}
     />
   );
