@@ -190,6 +190,165 @@ export function getSeedMaxIncrease(seedType: SeedType) {
   return 5;
 }
 
+// ====== ミニゲーム 週間ランキング ======
+export type GameType = "friend" | "running" | "stop" | "thread";
+
+export const gameLabels: Record<GameType, string> = {
+  friend: "連打",
+  running: "ランニング",
+  stop: "ストップ",
+  thread: "糸通し"
+};
+
+// 各ゲームの1位〜3位がもらえる「成長の種」
+export const gameSeed: Record<GameType, SeedType> = {
+  friend: "power",
+  running: "stamina",
+  stop: "speed",
+  thread: "technique"
+};
+
+export const gameScoreUnit: Record<GameType, string> = {
+  friend: "回",
+  running: "m",
+  stop: "連続",
+  thread: "枚"
+};
+
+// 月曜はじまりの週の開始日（ローカル日付）
+export function mondayStart(base?: Date): Date {
+  const x = base ? new Date(base) : new Date();
+  x.setHours(0, 0, 0, 0);
+  const day = (x.getDay() + 6) % 7; // 月=0 … 日=6
+  x.setDate(x.getDate() - day);
+  return x;
+}
+
+export function ymdLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+// その週のベストスコアだけを残す（child×game×週で1行）
+export async function saveGameScore(
+  childId: string,
+  gameType: GameType,
+  score: number
+) {
+  if (!childId || score <= 0) {
+    return;
+  }
+
+  const ws = ymdLocal(mondayStart());
+
+  const { data: existing } = await supabase
+    .from("game_scores")
+    .select("id, score")
+    .eq("child_id", childId)
+    .eq("game_type", gameType)
+    .eq("week_start", ws)
+    .maybeSingle();
+
+  if (existing) {
+    if (score > Number(existing.score || 0)) {
+      await supabase
+        .from("game_scores")
+        .update({ score, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    }
+    return;
+  }
+
+  await supabase.from("game_scores").insert({
+    child_id: childId,
+    game_type: gameType,
+    score,
+    week_start: ws
+  });
+}
+
+export type GameRankRow = {
+  child_id: string;
+  score: number;
+  child_name: string;
+  classroom: string;
+};
+
+export async function getGameRanking(
+  gameType: GameType,
+  weekStartStr: string,
+  limit = 30
+): Promise<GameRankRow[]> {
+  const { data } = await supabase
+    .from("game_scores")
+    .select("child_id, score, children ( name, classrooms ( name ) )")
+    .eq("game_type", gameType)
+    .eq("week_start", weekStartStr)
+    .order("score", { ascending: false })
+    .limit(limit);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data || []) as any[]).map((r) => ({
+    child_id: r.child_id,
+    score: r.score,
+    child_name: r.children?.name || "なまえ未設定",
+    classroom: r.children?.classrooms?.name || "所属未設定"
+  }));
+}
+
+export type WeeklyRewardResult = {
+  gameType: GameType;
+  rank: number;
+  seed: SeedType;
+};
+
+// 先週（前の月〜日）の各ゲーム上位3人なら、種を1回だけ自動で受け取る
+export async function claimWeeklyGameRewards(
+  childId: string
+): Promise<WeeklyRewardResult[]> {
+  if (!childId) {
+    return [];
+  }
+
+  const lastWeek = mondayStart();
+  lastWeek.setDate(lastWeek.getDate() - 7);
+  const ws = ymdLocal(lastWeek);
+
+  const games: GameType[] = ["friend", "running", "stop", "thread"];
+  const results: WeeklyRewardResult[] = [];
+
+  for (const g of games) {
+    const top = await getGameRanking(g, ws, 3);
+    const idx = top.findIndex((r) => r.child_id === childId);
+
+    if (idx < 0) {
+      continue;
+    }
+
+    // 受け取り記録（1回だけ）。すでに受け取り済みなら unique 制約でエラー。
+    const { error } = await supabase.from("game_reward_logs").insert({
+      child_id: childId,
+      game_type: g,
+      week_start: ws
+    });
+
+    if (error) {
+      continue;
+    }
+
+    try {
+      await addSeedToChild(childId, gameSeed[g], 1);
+      results.push({ gameType: g, rank: idx + 1, seed: gameSeed[g] });
+    } catch {
+      // 付与に失敗しても続行
+    }
+  }
+
+  return results;
+}
+
 export function calcEvolutionReady(monster: ActiveMonster) {
   const total =
     monster.power +
