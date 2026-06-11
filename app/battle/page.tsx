@@ -25,7 +25,7 @@ type Opponent = {
 const SAME_OPP_DAILY_LIMIT = 2; // 同じ相手とは1日2回まで
 
 function battleToday() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD（ローカル）
 }
 function recentKey(childId: string) {
   return `swm_recent_opp_${childId}`;
