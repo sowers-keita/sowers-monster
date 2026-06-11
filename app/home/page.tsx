@@ -74,6 +74,51 @@ const STATS: {
   { key: "technique", maxKey: "technique_max", label: "テクニック", color: "#9b51e0", train: "thread" }
 ];
 
+// はじめての人むけ チュートリアル（ほぼ ひらがな）
+type Slide = { icon: string; title: string; text: string };
+const SLIDES: Slide[] = [
+  {
+    icon: "🥚✨",
+    title: "ようこそ！",
+    text: "サワーズモンスターへ ようこそ！ じぶんだけの モンスターを そだてる ゲームだよ。"
+  },
+  {
+    icon: "🐣",
+    title: "そだてよう",
+    text: "トレーニングや バトルで モンスターを つよく そだてるよ。そだてると すがたも かわる！"
+  },
+  {
+    icon: "💪",
+    title: "トレーニング",
+    text: "4つの ミニゲームで つよくなる。1日 1かい「たね」も もらえるよ。"
+  },
+  {
+    icon: "🌱",
+    title: "たね",
+    text: "ミッション・あいことば・ランキングじょうい でも たねが もらえる。たねを つかうと もっと つよく！"
+  },
+  {
+    icon: "✨",
+    title: "しんか",
+    text: "じゅうぶん つよくすると、ボタンを おして しんか（へんしん）できるよ。"
+  },
+  {
+    icon: "⚔️",
+    title: "バトル",
+    text: "ぜんこくの みんなや、ともだちと たたかえる。かつと せんとうりょくが アップ！"
+  },
+  {
+    icon: "🌅",
+    title: "たびだち",
+    text: "1かげつで モンスターは たびだち。ずかんに のって、つぎの たまごを えらべるよ。"
+  },
+  {
+    icon: "🚀",
+    title: "はじめよう！",
+    text: "まずは「💪トレーニング」で つよくしよう！ がんばってね！"
+  }
+];
+
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -103,6 +148,17 @@ export default function HomePage() {
   const [weeklyRewards, setWeeklyRewards] = useState<WeeklyRewardResult[]>([]);
   const [busyStat, setBusyStat] = useState<StatKey | "">("");
   const [flashStat, setFlashStat] = useState<StatKey | "">("");
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  function finishTutorial() {
+    try {
+      localStorage.setItem("swm_tutorial_seen", "1");
+    } catch {
+      // 無視
+    }
+    setShowTutorial(false);
+  }
 
   useEffect(() => {
     loadHome();
@@ -191,6 +247,16 @@ export default function HomePage() {
     }
 
     setMonster(m);
+
+    // はじめての人には チュートリアルを 1回だけ ひらく
+    try {
+      if (!localStorage.getItem("swm_tutorial_seen")) {
+        setTutorialStep(0);
+        setShowTutorial(true);
+      }
+    } catch {
+      // 無視
+    }
 
     try {
       setSeeds(await getMySeeds());
@@ -818,8 +884,117 @@ export default function HomePage() {
               </button>
             </div>
           </div>
+
+          <button
+            className="button gray"
+            onClick={() => {
+              setTutorialStep(0);
+              setShowTutorial(true);
+            }}
+          >
+            ❓ あそびかた を みる
+          </button>
         </div>
       </div>
+
+      {/* はじめての人むけ チュートリアル */}
+      {showTutorial && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 70,
+            background: "rgba(18,10,28,0.9)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 22
+          }}
+        >
+          <div
+            className="card"
+            style={{ width: "100%", maxWidth: 340, marginBottom: 0, textAlign: "center" }}
+          >
+            <div style={{ fontSize: 60, lineHeight: 1 }}>
+              {SLIDES[tutorialStep].icon}
+            </div>
+            <div className="title" style={{ marginTop: 6 }}>
+              {SLIDES[tutorialStep].title}
+            </div>
+            <div
+              className="note"
+              style={{ fontSize: 15, textAlign: "left", minHeight: 66 }}
+            >
+              {SLIDES[tutorialStep].text}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 6,
+                margin: "12px 0"
+              }}
+            >
+              {SLIDES.map((_, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: i === tutorialStep ? "#ff7a00" : "#e0d3bd"
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              {tutorialStep > 0 && (
+                <button
+                  className="button gray"
+                  style={{ flex: 1, marginTop: 0 }}
+                  onClick={() => setTutorialStep((s) => s - 1)}
+                >
+                  もどる
+                </button>
+              )}
+              {tutorialStep < SLIDES.length - 1 ? (
+                <button
+                  className="button"
+                  style={{ flex: 1, marginTop: 0 }}
+                  onClick={() => setTutorialStep((s) => s + 1)}
+                >
+                  つぎへ ▶
+                </button>
+              ) : (
+                <button
+                  className="button orange"
+                  style={{ flex: 1, marginTop: 0 }}
+                  onClick={finishTutorial}
+                >
+                  はじめる！
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={finishTutorial}
+              style={{
+                marginTop: 10,
+                background: "transparent",
+                border: "none",
+                color: "#8a6b4f",
+                fontSize: 13,
+                fontWeight: 900,
+                cursor: "pointer"
+              }}
+            >
+              スキップ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 先週のミニゲーム上位3人 種ゲット！ */}
       {weeklyRewards.length > 0 && (
