@@ -23,6 +23,22 @@ type HomeMonster = {
   battle_power: number;
 };
 
+// 進化のしくみ：4つの能力の合計が一定値に達すると次の段階へ
+const EVO_THRESHOLD: Record<string, number> = {
+  スタート期: 20,
+  ビギナー期: 60,
+  ヒーロー期: 120
+};
+const NEXT_STAGE: Record<string, string> = {
+  スタート期: "ビギナー期",
+  ビギナー期: "ヒーロー期",
+  ヒーロー期: "覚醒期"
+};
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export default function HomePage() {
   const router = useRouter();
 
@@ -33,6 +49,7 @@ export default function HomePage() {
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [happy, setHappy] = useState(false);
+  const [evolving, setEvolving] = useState<"none" | "glow" | "done">("none");
 
   useEffect(() => {
     loadHome();
@@ -117,6 +134,35 @@ export default function HomePage() {
     setSavingName(false);
   }
 
+  async function evolve() {
+    if (!monster || evolving !== "none") {
+      return;
+    }
+
+    const ns = NEXT_STAGE[monster.stage];
+    if (!ns) {
+      return;
+    }
+
+    // 光って進化演出
+    setEvolving("glow");
+    await sleep(1300);
+
+    const { error } = await supabase
+      .from("monsters")
+      .update({ stage: ns })
+      .eq("id", monster.id);
+
+    if (error) {
+      alert(error.message);
+      setEvolving("none");
+      return;
+    }
+
+    setMonster({ ...monster, stage: ns });
+    setEvolving("done");
+  }
+
   if (loading) {
     return (
       <main className="page">
@@ -136,8 +182,24 @@ export default function HomePage() {
     return null;
   }
 
+  const total =
+    monster.power + monster.stamina + monster.speed + monster.technique;
+  const threshold = EVO_THRESHOLD[monster.stage];
+  const canEvolve = threshold !== undefined && total >= threshold;
+  const evoRemain =
+    threshold !== undefined ? Math.max(0, threshold - total) : 0;
+  const isMaxStage = NEXT_STAGE[monster.stage] === undefined;
+
   return (
     <main className="page">
+      <style>{`
+@keyframes evo-glow{0%{filter:brightness(1);transform:scale(1);}45%{filter:brightness(3.5);transform:scale(1.18);}100%{filter:brightness(1.4);transform:scale(1.05);}}
+.evo-glow{animation:evo-glow 1.3s ease-in-out forwards;}
+@keyframes evo-pop{0%{transform:scale(.4);opacity:0;}60%{transform:scale(1.12);opacity:1;}100%{transform:scale(1);}}
+.evo-pop{animation:evo-pop .5s ease-out;}
+@keyframes evo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+.evo-ready{animation:evo-pulse 1s ease-in-out infinite;}
+`}</style>
       <div className="phone">
         <div className="header">Sowers Monster</div>
 
@@ -239,6 +301,54 @@ export default function HomePage() {
             <div className="note">{childName}さんのモンスター</div>
           </div>
 
+          {/* 進化 */}
+          {canEvolve && (
+            <button
+              className="button evo-ready"
+              onClick={evolve}
+              style={{
+                background: "linear-gradient(90deg,#ffce3a,#ff9d00)",
+                color: "#2b1b10",
+                fontSize: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12
+              }}
+            >
+              <span style={{ fontSize: 36 }} aria-hidden>
+                ✨
+              </span>
+              しんかする！
+            </button>
+          )}
+
+          {!canEvolve && !isMaxStage && (
+            <div
+              className="card"
+              style={{ textAlign: "center", background: "#fff8e6" }}
+            >
+              <div style={{ fontWeight: 900, color: "#2b1b10" }}>
+                あと <span style={{ color: "#ff7a00" }}>{evoRemain}</span>{" "}
+                つよくすると しんか！
+              </div>
+              <div className="note" style={{ marginTop: 4 }}>
+                トレーニングで パワー・スタミナ・スピード・テクニックを そだてよう
+              </div>
+            </div>
+          )}
+
+          {isMaxStage && (
+            <div
+              className="card"
+              style={{ textAlign: "center", background: "#fff8e6" }}
+            >
+              <div style={{ fontWeight: 900, color: "#2b1b10" }}>
+                ✨ さいごの すがた ✨
+              </div>
+            </div>
+          )}
+
           <div className="card">
             <div className="title">ステータス</div>
 
@@ -323,6 +433,59 @@ export default function HomePage() {
           />
         </div>
       </div>
+
+      {/* 進化アニメーションのオーバーレイ */}
+      {evolving !== "none" && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(18,10,28,0.88)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+            textAlign: "center"
+          }}
+        >
+          <div className={evolving === "glow" ? "evo-glow" : "evo-pop"}>
+            <MonsterIcon
+              color={monster.egg_color}
+              size={200}
+              stage={monster.stage}
+              speed={monster.speed}
+              technique={monster.technique}
+              happy={evolving === "done"}
+            />
+          </div>
+
+          <div
+            style={{
+              color: "white",
+              fontSize: 26,
+              fontWeight: 900,
+              marginTop: 20,
+              lineHeight: 1.5
+            }}
+          >
+            {evolving === "glow"
+              ? "しんか している…"
+              : `✨ ${monster.stage} に しんかした！`}
+          </div>
+
+          {evolving === "done" && (
+            <button
+              className="button"
+              style={{ maxWidth: 260, marginTop: 20 }}
+              onClick={() => setEvolving("none")}
+            >
+              やったー！
+            </button>
+          )}
+        </div>
+      )}
 
       <BottomNav active="home" />
     </main>
