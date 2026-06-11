@@ -96,6 +96,11 @@ export default function BattlePage() {
   const [playerHp, setPlayerHp] = useState(0);
   const [enemyHp, setEnemyHp] = useState(0);
   const [log, setLog] = useState("対戦相手を探しています…");
+  const [pAnim, setPAnim] = useState<{
+    type: "idle" | "attack" | "jump";
+    expr: "normal" | "happy" | "angry" | "sad";
+    k: number;
+  }>({ type: "idle", expr: "normal", k: 0 });
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [resultText, setResultText] = useState("");
@@ -212,6 +217,13 @@ export default function BattlePage() {
     };
   }
 
+  function actPlayer(
+    type: "idle" | "attack" | "jump",
+    expr: "normal" | "happy" | "angry" | "sad"
+  ) {
+    setPAnim((a) => ({ type, expr, k: a.k + 1 }));
+  }
+
   async function startBattle() {
     if (!monster || !opponent || started) {
       return;
@@ -245,6 +257,10 @@ export default function BattlePage() {
         speed: opponent.speed
       });
 
+      // 攻撃：アイコンが動く。クリティカルは怒りの表情。
+      const isCrit = playerAttack.text.includes("クリティカル");
+      actPlayer("attack", isCrit ? "angry" : "normal");
+
       eHp -= playerAttack.damage;
       setEnemyHp(Math.max(0, eHp));
       setLog(`${monster.name}の攻撃！${playerAttack.text}`);
@@ -258,6 +274,13 @@ export default function BattlePage() {
         speed: monster.speed + 10
       });
 
+      // 相手の攻撃をよけたら、ジャンプして喜ぶ。
+      if (enemyAttack.damage === 0) {
+        actPlayer("jump", "happy");
+      } else {
+        actPlayer("idle", "normal");
+      }
+
       pHp -= enemyAttack.damage;
       setPlayerHp(Math.max(0, pHp));
       setLog(`${opponent.monsterName}の攻撃！${enemyAttack.text}`);
@@ -266,6 +289,9 @@ export default function BattlePage() {
 
     const isWin = pHp > 0;
     const gained = isWin ? 10 : 5;
+
+    // 勝ったら喜び、負けたら悲しみの表情。
+    actPlayer(isWin ? "jump" : "idle", isWin ? "happy" : "sad");
 
     await finishBattle(isWin, gained);
   }
@@ -338,6 +364,12 @@ export default function BattlePage() {
   return (
     <main className="page">
       <div className="phone">
+        <style>{`
+.b-attack{animation:b-attack .45s ease;}
+@keyframes b-attack{0%{transform:translateX(0);}40%{transform:translateX(26px) scale(1.06);}100%{transform:translateX(0);}}
+.b-jump{animation:b-jump .55s ease;}
+@keyframes b-jump{0%{transform:translateY(0);}35%{transform:translateY(-26px);}70%{transform:translateY(0);}85%{transform:translateY(-8px);}100%{transform:translateY(0);}}
+`}</style>
         <div className="header">モンスターバトル</div>
 
         <div className="content" style={{ paddingBottom: 92 }}>
@@ -367,13 +399,26 @@ export default function BattlePage() {
             }}
           >
             <div>
-              <MonsterIcon
-                color={monster.egg_color}
-                size={105}
-                stage={monster.stage}
-                speed={monster.speed}
-                technique={monster.technique}
-              />
+              <div
+                key={pAnim.k}
+                className={
+                  pAnim.type === "attack"
+                    ? "b-attack"
+                    : pAnim.type === "jump"
+                    ? "b-jump"
+                    : ""
+                }
+                style={{ display: "inline-block" }}
+              >
+                <MonsterIcon
+                  color={monster.egg_color}
+                  size={105}
+                  expression={pAnim.expr}
+                  stage={monster.stage}
+                  speed={monster.speed}
+                  technique={monster.technique}
+                />
+              </div>
               <div style={{ fontWeight: 900, color: "#2b1b10" }}>
                 {monster.name}
               </div>
