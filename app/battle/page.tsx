@@ -20,13 +20,18 @@ type Opponent = {
   technique: number;
 };
 
+// 体力（HP）：基礎体力100＋スタミナ1ごとに+10
+function hpFromStamina(stamina: number) {
+  return 100 + Math.max(0, stamina) * 10;
+}
+
 const opponents: Opponent[] = [
   {
     name: "はると",
     classroom: "徳島体操",
     monsterName: "ワンダー",
     eggColor: "blue",
-    hp: 80,
+    hp: 130,
     power: 22,
     stamina: 80,
     speed: 15,
@@ -37,7 +42,7 @@ const opponents: Opponent[] = [
     classroom: "北島教室",
     monsterName: "ピヨン",
     eggColor: "pink",
-    hp: 75,
+    hp: 120,
     power: 20,
     stamina: 75,
     speed: 24,
@@ -48,7 +53,7 @@ const opponents: Opponent[] = [
     classroom: "Sowers Club",
     monsterName: "シャドウハウンド",
     eggColor: "blue",
-    hp: 95,
+    hp: 160,
     power: 24,
     stamina: 95,
     speed: 18,
@@ -59,7 +64,7 @@ const opponents: Opponent[] = [
     classroom: "阿南教室",
     monsterName: "モンガード",
     eggColor: "red",
-    hp: 85,
+    hp: 140,
     power: 27,
     stamina: 85,
     speed: 17,
@@ -111,7 +116,7 @@ export default function BattlePage() {
     }
 
     setMonster(current);
-    setPlayerHp(Math.max(10, current.stamina_max + current.stamina));
+    setPlayerHp(hpFromStamina(current.stamina));
 
     // 他の登録ユーザーのモンスターから対戦相手を探す
     const { data: others } = await supabase
@@ -135,7 +140,7 @@ export default function BattlePage() {
         classroom: pick.children?.classrooms?.name || "Sowers Club",
         monsterName: pick.name,
         eggColor: pick.egg_color,
-        hp: Math.max(10, pick.stamina_max + pick.stamina),
+        hp: hpFromStamina(pick.stamina),
         power: Math.max(1, pick.power + 10),
         stamina: pick.stamina,
         speed: pick.speed + 10,
@@ -220,7 +225,7 @@ export default function BattlePage() {
     setStarted(true);
     setLog("バトル開始！");
 
-    let pHp = Math.max(10, monster.stamina_max + monster.stamina);
+    let pHp = hpFromStamina(monster.stamina);
     let eHp = opponent.hp;
 
     const playerBattleStats = {
@@ -327,7 +332,7 @@ export default function BattlePage() {
     );
   }
 
-  const playerMaxHp = Math.max(10, monster.stamina_max + monster.stamina);
+  const playerMaxHp = hpFromStamina(monster.stamina);
   const enemyMaxHp = opponent.hp;
 
   return (
