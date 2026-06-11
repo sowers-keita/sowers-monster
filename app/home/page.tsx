@@ -62,11 +62,12 @@ const STATS: {
   maxKey: "power_max" | "stamina_max" | "speed_max" | "technique_max";
   label: string;
   color: string;
+  train: "friend" | "running" | "stop" | "thread";
 }[] = [
-  { key: "power", maxKey: "power_max", label: "パワー", color: "#ff4b35" },
-  { key: "stamina", maxKey: "stamina_max", label: "スタミナ", color: "#34b85a" },
-  { key: "speed", maxKey: "speed_max", label: "スピード", color: "#2f8ee5" },
-  { key: "technique", maxKey: "technique_max", label: "テクニック", color: "#9b51e0" }
+  { key: "power", maxKey: "power_max", label: "パワー", color: "#ff4b35", train: "friend" },
+  { key: "stamina", maxKey: "stamina_max", label: "スタミナ", color: "#34b85a", train: "running" },
+  { key: "speed", maxKey: "speed_max", label: "スピード", color: "#2f8ee5", train: "stop" },
+  { key: "technique", maxKey: "technique_max", label: "テクニック", color: "#9b51e0", train: "thread" }
 ];
 
 function sleep(ms: number) {
@@ -622,21 +623,26 @@ export default function HomePage() {
                       disabled={have <= 0 || busyStat === s.key}
                       style={{
                         height: 32,
-                        padding: "0 8px",
+                        padding: "0 9px",
                         borderRadius: 10,
                         border: "2px solid #2b1b10",
                         background: have > 0 ? "#ffe9a8" : "#eee",
                         color: "#2b1b10",
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 900,
-                        opacity: have > 0 ? 1 : 0.55,
-                        whiteSpace: "nowrap"
+                        opacity: have > 0 ? 1 : 0.5,
+                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4
                       }}
                     >
-                      🌱{have}
+                      <MiniSeed seedType={s.key} />
+                      {have}
                     </button>
                     <button
-                      onClick={() => router.push("/training")}
+                      onClick={() => router.push(`/training?t=${s.train}`)}
                       style={{
                         height: 32,
                         width: 36,
@@ -906,5 +912,46 @@ export default function HomePage() {
 
       <BottomNav active="home" />
     </main>
+  );
+}
+
+// 持ち物画面と同じ「芽が出た種」アイコン（能力ごとに色ちがい）の小サイズ版
+function MiniSeed({ seedType }: { seedType: StatKey }) {
+  const bg =
+    seedType === "power"
+      ? "linear-gradient(135deg, #ff3d25, #ff8a00)"
+      : seedType === "stamina"
+      ? "linear-gradient(135deg, #1383ff, #22c0ff)"
+      : seedType === "speed"
+      ? "linear-gradient(135deg, #42b72a, #b9ff35)"
+      : "linear-gradient(135deg, #6f2dd8, #cc76ff)";
+
+  return (
+    <span
+      style={{
+        position: "relative",
+        display: "inline-block",
+        width: 15,
+        height: 19,
+        borderRadius: "50% 50% 44% 44%",
+        border: "2px solid #2b1b10",
+        background: bg,
+        boxShadow: "inset -3px -3px 0 rgba(0,0,0,0.15)"
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          left: 3,
+          top: -4,
+          width: 9,
+          height: 6,
+          background: "#54b83f",
+          border: "1.5px solid #2b1b10",
+          borderRadius: "50% 50% 35% 35%",
+          transform: "rotate(-8deg)"
+        }}
+      />
+    </span>
   );
 }
