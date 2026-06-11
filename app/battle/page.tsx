@@ -191,6 +191,7 @@ export default function BattlePage() {
   const [finished, setFinished] = useState(false);
   const [resultText, setResultText] = useState("");
   const [battlesToday, setBattlesToday] = useState(0);
+  const [view, setView] = useState<"menu" | "online">("menu");
 
   const DAILY_LIMIT = 10;
 
@@ -475,6 +476,68 @@ export default function BattlePage() {
     );
   }
 
+  // バトルのハブ：上＝オンライン対戦、下＝友達とオフライン対戦
+  if (view === "menu") {
+    return (
+      <main className="page">
+        <div className="phone">
+          <div className="header">バトル</div>
+          <div className="content" style={{ paddingBottom: 92 }}>
+            <div className="card" style={{ textAlign: "center" }}>
+              <MonsterIcon
+                color={monster.egg_color}
+                size={110}
+                stage={monster.stage}
+                speed={monster.speed}
+                technique={monster.technique}
+              />
+              <div className="title" style={{ marginTop: 8 }}>
+                どっちで バトルする？
+              </div>
+            </div>
+
+            <button
+              className="button red"
+              onClick={() => setView("online")}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                lineHeight: 1.2,
+                minHeight: 76
+              }}
+            >
+              <span style={{ fontSize: 22 }}>🌐 オンラインで対戦</span>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>
+                ぜんこくの みんなと（1日10回）
+              </span>
+            </button>
+
+            <button
+              className="button blue"
+              onClick={() => router.push("/versus")}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                lineHeight: 1.2,
+                minHeight: 76
+              }}
+            >
+              <span style={{ fontSize: 22 }}>👥 友達とオフライン対戦</span>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>
+                QRを見せ合って たたかう
+              </span>
+            </button>
+          </div>
+        </div>
+        <BottomNav active="battle" />
+      </main>
+    );
+  }
+
   const playerMaxHp = hpFromStamina(monster.stamina);
   const enemyMaxHp = opponent.hp;
 
@@ -619,7 +682,7 @@ export default function BattlePage() {
         </div>
       </div>
 
-      <BottomNav active="home" />
+      <BottomNav active="battle" />
     </main>
   );
 }
