@@ -39,6 +39,10 @@ export default function MissionPage() {
   const [codeInput, setCodeInput] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
   const [codeBusy, setCodeBusy] = useState(false);
+  const [pinGate, setPinGate] = useState<"none" | "enter" | "set">("none");
+  const [gatePin, setGatePin] = useState("");
+  const [gatePin2, setGatePin2] = useState("");
+  const [gateMsg, setGateMsg] = useState("");
 
   useEffect(() => {
     loadMissions();
@@ -179,6 +183,39 @@ export default function MissionPage() {
     setCodeBusy(false);
   }
 
+  // 設定画面（おうちミッション）へは暗証番号が必要
+  function openSettings() {
+    setGatePin("");
+    setGatePin2("");
+    setGateMsg("");
+    const saved = localStorage.getItem("parentPin");
+    setPinGate(saved ? "enter" : "set"); // 初回は設定、以降は入力
+  }
+
+  function submitGateEnter() {
+    const saved = localStorage.getItem("parentPin") || "1234";
+    if (gatePin !== saved) {
+      setGateMsg("暗証番号が ちがいます");
+      return;
+    }
+    setPinGate("none");
+    router.push("/parent-settings");
+  }
+
+  function submitGateSet() {
+    if (!/^[0-9]{4}$/.test(gatePin)) {
+      setGateMsg("4桁の数字で 決めてね");
+      return;
+    }
+    if (gatePin !== gatePin2) {
+      setGateMsg("2回とも 同じ番号を 入力してね");
+      return;
+    }
+    localStorage.setItem("parentPin", gatePin);
+    setPinGate("none");
+    router.push("/parent-settings");
+  }
+
   async function approveParentMission(mission: Mission) {
     const savedPin = localStorage.getItem("parentPin") || "1234";
 
@@ -284,14 +321,9 @@ export default function MissionPage() {
             <div className="card">
               <div className="title">おうちミッションなし</div>
               <div className="note">
-                おうちの人が せってい画面から 今日のミッションを 作れます。
+                おうちの人が、下の「おうちミッションを設定する」から
+                今日のミッションを 作れます。
               </div>
-              <button
-                className="button blue"
-                onClick={() => router.push("/parent-settings")}
-              >
-                おうちミッションを つくる
-              </button>
             </div>
           )}
 
@@ -329,14 +361,91 @@ export default function MissionPage() {
             </div>
           ))}
 
-          <button
-            className="button orange"
-            onClick={() => router.push("/parent-settings")}
-          >
-            おうちミッションを設定する
+          <button className="button orange" onClick={openSettings}>
+            🔒 おうちミッションを設定する
           </button>
         </div>
       </div>
+
+      {/* 暗証番号ゲート（おうちの人だけが設定画面に入れる） */}
+      {pinGate !== "none" && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            background: "rgba(18,10,28,0.86)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 22
+          }}
+        >
+          <div
+            className="card"
+            style={{ width: "100%", maxWidth: 340, marginBottom: 0 }}
+          >
+            <div className="title">
+              {pinGate === "set" ? "暗証番号を きめよう" : "おうちの人 かくにん"}
+            </div>
+            <div className="note" style={{ textAlign: "left" }}>
+              {pinGate === "set"
+                ? "暗証番号は、子どもが かってに ミッションを 作れないように、おうちの人だけが 設定画面に 入るための ものです。4桁の数字を 決めてください。"
+                : "おうちミッションの設定は、おうちの人だけが できます。暗証番号を 入力してください。"}
+            </div>
+
+            <label className="label">暗証番号（4桁）</label>
+            <input
+              className="input"
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={gatePin}
+              onChange={(event) => setGatePin(event.target.value)}
+            />
+
+            {pinGate === "set" && (
+              <>
+                <label className="label">もう一度</label>
+                <input
+                  className="input"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={gatePin2}
+                  onChange={(event) => setGatePin2(event.target.value)}
+                />
+              </>
+            )}
+
+            {gateMsg && (
+              <div
+                style={{
+                  marginTop: 10,
+                  color: "#c0392b",
+                  fontWeight: 900,
+                  textAlign: "center"
+                }}
+              >
+                {gateMsg}
+              </div>
+            )}
+
+            <button
+              className="button blue"
+              onClick={pinGate === "set" ? submitGateSet : submitGateEnter}
+            >
+              {pinGate === "set" ? "決めて すすむ" : "ひらく"}
+            </button>
+            <button
+              className="button gray"
+              onClick={() => setPinGate("none")}
+            >
+              やめる
+            </button>
+          </div>
+        </div>
+      )}
 
       <BottomNav active="mission" />
     </main>
