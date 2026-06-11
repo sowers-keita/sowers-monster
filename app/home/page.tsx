@@ -240,34 +240,6 @@ export default function HomePage() {
           </div>
 
           <div className="card">
-            <div className="title">バトル情報</div>
-
-            <div
-              style={{
-                background: "#fff1cf",
-                border: "3px solid #2b1b10",
-                borderRadius: 16,
-                padding: 14,
-                textAlign: "center",
-                fontWeight: 900
-              }}
-            >
-              戦闘力
-              <div style={{ fontSize: 34, color: "#ff4b35" }}>
-                {monster.battle_power}
-              </div>
-            </div>
-          </div>
-
-          <button className="button red" onClick={() => router.push("/battle")}>
-            バトル
-          </button>
-
-          <button className="button blue" onClick={() => router.push("/ranking")}>
-            ランキング
-          </button>
-
-          <div className="card">
             <div className="title">ステータス</div>
 
             <Status
@@ -299,26 +271,94 @@ export default function HomePage() {
             />
           </div>
 
-          <button className="button" onClick={() => router.push("/mission")}>
-            ミッション
-          </button>
+          <div className="card">
+            <div className="title">バトル情報</div>
 
-          <button className="button orange" onClick={() => router.push("/training")}>
-            トレーニング
-          </button>
+            <div
+              style={{
+                background: "#fff1cf",
+                border: "3px solid #2b1b10",
+                borderRadius: 16,
+                padding: 14,
+                textAlign: "center",
+                fontWeight: 900
+              }}
+            >
+              戦闘力
+              <div style={{ fontSize: 34, color: "#ff4b35" }}>
+                {monster.battle_power}
+              </div>
+            </div>
+          </div>
 
-          <button className="button blue" onClick={() => router.push("/inventory")}>
-            持ち物
-          </button>
-
-          <button className="button orange" onClick={() => router.push("/zukan")}>
-            図鑑
-          </button>
+          <MenuButton
+            className="button"
+            icon="🎯"
+            label="ミッション"
+            onClick={() => router.push("/mission")}
+          />
+          <MenuButton
+            className="button orange"
+            icon="💪"
+            label="トレーニング"
+            onClick={() => router.push("/training")}
+          />
+          <MenuButton
+            className="button red"
+            icon="⚔️"
+            label="バトル"
+            onClick={() => router.push("/battle")}
+          />
+          <MenuButton
+            className="button blue"
+            icon="🎒"
+            label="もちもの"
+            onClick={() => router.push("/inventory")}
+          />
+          <MenuButton
+            className="button orange"
+            icon="📖"
+            label="ずかん"
+            onClick={() => router.push("/zukan")}
+          />
         </div>
       </div>
 
       <BottomNav active="home" />
     </main>
+  );
+}
+
+// 文字が苦手な子でも分かるよう、大きな絵アイコン付きのボタン
+function MenuButton({
+  className,
+  icon,
+  label,
+  onClick
+}: {
+  className: string;
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={className}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 14,
+        minHeight: 70,
+        fontSize: 24
+      }}
+    >
+      <span style={{ fontSize: 40, lineHeight: 1 }} aria-hidden>
+        {icon}
+      </span>
+      <span>{label}</span>
+    </button>
   );
 }
 
