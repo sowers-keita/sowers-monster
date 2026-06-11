@@ -58,7 +58,7 @@ function calcDamage(
 const LIMIT_SAME = 3; // 同じ相手とは1日3回まで
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD（ローカル）
 }
 
 function versusKey(myChild: string, oppId: string) {
