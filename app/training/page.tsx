@@ -5,7 +5,8 @@ import MonsterIcon from "@/components/MonsterIcon";
 import {
   ActiveMonster,
   addSeedToChild,
-  getMyActiveMonster
+  getMyActiveMonster,
+  saveGameScore
 } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -103,10 +104,20 @@ export default function TrainingPage() {
   async function onClear(
     statPoints: number,
     seedEarned: boolean,
-    result?: string
+    result?: string,
+    score?: number
   ) {
     if (!monster) {
       return;
+    }
+
+    // ミニゲームの今週のベストスコアを保存（ランキング用）
+    if (score && score > 0) {
+      try {
+        await saveGameScore(monster.child_id, config.type, score);
+      } catch {
+        // 保存に失敗しても続行
+      }
     }
 
     // 能力値（現在値）を上げる
@@ -326,7 +337,12 @@ function PowerTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
+  onClear: (
+    statPoints: number,
+    seedEarned: boolean,
+    result?: string,
+    score?: number
+  ) => void;
 }) {
   const [position, setPosition] = useState(0);
   const posRef = useRef(0);
@@ -396,7 +412,8 @@ function PowerTraining({
             onClear(
               t > 0 ? pts : 0,
               seedReachedRef.current,
-              `さいこう ${maxStreakRef.current} 連続！`
+              `さいこう ${maxStreakRef.current} 連続！`,
+              maxStreakRef.current
             );
           }
 
@@ -551,7 +568,12 @@ function ThreadTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
+  onClear: (
+    statPoints: number,
+    seedEarned: boolean,
+    result?: string,
+    score?: number
+  ) => void;
 }) {
   const [, setTick] = useState(0);
   const [passedView, setPassedView] = useState(0);
@@ -651,7 +673,7 @@ function ThreadTraining({
             s.seedReached ? "・種ゲット！" : ""
           }`
         );
-        onClear(pts, s.seedReached, `${s.passed} 枚 通過！`);
+        onClear(pts, s.seedReached, `${s.passed} 枚 通過！`, s.passed);
         return;
       }
 
@@ -846,7 +868,12 @@ function TapTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
+  onClear: (
+    statPoints: number,
+    seedEarned: boolean,
+    result?: string,
+    score?: number
+  ) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -877,7 +904,7 @@ function TapTraining({
             firedRef.current = true;
             const c = countRef.current;
             const pts = c <= 30 ? 1 : c <= 70 ? 2 : 3;
-            onClear(pts, c >= 80, `連打 ${c} 回！`);
+            onClear(pts, c >= 80, `連打 ${c} 回！`, c);
           }
 
           return 0;
@@ -1020,7 +1047,12 @@ function RunningTraining({
   onClear
 }: {
   config: TrainingConfig;
-  onClear: (statPoints: number, seedEarned: boolean, result?: string) => void;
+  onClear: (
+    statPoints: number,
+    seedEarned: boolean,
+    result?: string,
+    score?: number
+  ) => void;
 }) {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -1139,7 +1171,7 @@ function RunningTraining({
         );
         if (!firedRef.current) {
           firedRef.current = true;
-          onClear(pts, s.seedReached, `${meters} メートル！`);
+          onClear(pts, s.seedReached, `${meters} メートル！`, meters);
         }
         return;
       }
