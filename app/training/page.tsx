@@ -242,14 +242,6 @@ export default function TrainingPage() {
 
           {mode === "clear" && (
             <div className="card" style={{ textAlign: "center" }}>
-              <button
-                className="button"
-                style={{ marginTop: 0, marginBottom: 6 }}
-                onClick={() => setMode("playing")}
-              >
-                🔁 もう一度（{config.title}）
-              </button>
-
               <MonsterIcon
                 color={monster.egg_color}
                 size={120}
@@ -282,12 +274,19 @@ export default function TrainingPage() {
                   : "また ちょうせんしてね！"}
               </div>
 
-              <button className="button" onClick={() => router.push("/home")}>
-                ホームへ戻る
+              <button className="button" onClick={() => setMode("playing")}>
+                🔁 もう一度
               </button>
 
               <button
                 className="button orange"
+                onClick={() => router.push("/home")}
+              >
+                ホームへ戻る
+              </button>
+
+              <button
+                className="button gray"
                 onClick={() => setMode("menu")}
               >
                 メニューへ
