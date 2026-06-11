@@ -101,6 +101,11 @@ export default function BattlePage() {
     expr: "normal" | "happy" | "angry" | "sad";
     k: number;
   }>({ type: "idle", expr: "normal", k: 0 });
+  const [oAnim, setOAnim] = useState<{
+    type: "idle" | "attack" | "jump";
+    expr: "normal" | "happy" | "angry" | "sad";
+    k: number;
+  }>({ type: "idle", expr: "normal", k: 0 });
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [resultText, setResultText] = useState("");
@@ -160,15 +165,17 @@ export default function BattlePage() {
     setEnemyHp(chosen.hp);
     setLog(`${chosen.classroom}の ${chosen.name}さん とマッチング！`);
 
-    // 当日のバトル回数を数える
+    // 当日のバトル回数を数える（今のモンスターになってから＝リセット後の分だけ）
     const start = new Date();
     start.setHours(0, 0, 0, 0);
+    const created = new Date(current.created_at);
+    const since = created > start ? created : start;
 
     const { count } = await supabase
       .from("battles")
       .select("*", { count: "exact", head: true })
       .eq("child_id", current.child_id)
-      .gte("created_at", start.toISOString());
+      .gte("created_at", since.toISOString());
 
     setBattlesToday(count || 0);
   }
@@ -224,6 +231,13 @@ export default function BattlePage() {
     setPAnim((a) => ({ type, expr, k: a.k + 1 }));
   }
 
+  function actOpponent(
+    type: "idle" | "attack" | "jump",
+    expr: "normal" | "happy" | "angry" | "sad"
+  ) {
+    setOAnim((a) => ({ type, expr, k: a.k + 1 }));
+  }
+
   async function startBattle() {
     if (!monster || !opponent || started) {
       return;
@@ -257,9 +271,15 @@ export default function BattlePage() {
         speed: opponent.speed
       });
 
-      // 攻撃：アイコンが動く。クリティカルは怒りの表情。
+      // 自分の攻撃：踏み込んで動く。クリティカルは怒りの表情。
       const isCrit = playerAttack.text.includes("クリティカル");
       actPlayer("attack", isCrit ? "angry" : "normal");
+      // 相手が自分の攻撃をよけたら、相手はジャンプして喜ぶ。
+      if (playerAttack.damage === 0) {
+        actOpponent("jump", "happy");
+      } else {
+        actOpponent("idle", "normal");
+      }
 
       eHp -= playerAttack.damage;
       setEnemyHp(Math.max(0, eHp));
@@ -274,7 +294,10 @@ export default function BattlePage() {
         speed: monster.speed + 10
       });
 
-      // 相手の攻撃をよけたら、ジャンプして喜ぶ。
+      // 相手の攻撃：踏み込んで動く。クリティカルは怒りの表情。
+      const enemyCrit = enemyAttack.text.includes("クリティカル");
+      actOpponent("attack", enemyCrit ? "angry" : "normal");
+      // 相手の攻撃をよけたら、自分はジャンプして喜ぶ。
       if (enemyAttack.damage === 0) {
         actPlayer("jump", "happy");
       } else {
@@ -290,8 +313,9 @@ export default function BattlePage() {
     const isWin = pHp > 0;
     const gained = isWin ? 10 : 5;
 
-    // 勝ったら喜び、負けたら悲しみの表情。
+    // 勝ったら自分は喜び・相手は悲しみ（負けたら逆）。
     actPlayer(isWin ? "jump" : "idle", isWin ? "happy" : "sad");
+    actOpponent(isWin ? "idle" : "jump", isWin ? "sad" : "happy");
 
     await finishBattle(isWin, gained);
   }
@@ -367,6 +391,8 @@ export default function BattlePage() {
         <style>{`
 .b-attack{animation:b-attack .45s ease;}
 @keyframes b-attack{0%{transform:translateX(0);}40%{transform:translateX(26px) scale(1.06);}100%{transform:translateX(0);}}
+.b-attack-l{animation:b-attack-l .45s ease;}
+@keyframes b-attack-l{0%{transform:translateX(0);}40%{transform:translateX(-26px) scale(1.06);}100%{transform:translateX(0);}}
 .b-jump{animation:b-jump .55s ease;}
 @keyframes b-jump{0%{transform:translateY(0);}35%{transform:translateY(-26px);}70%{transform:translateY(0);}85%{transform:translateY(-8px);}100%{transform:translateY(0);}}
 `}</style>
@@ -427,7 +453,23 @@ export default function BattlePage() {
             </div>
 
             <div>
-              <MonsterIcon color={opponent.eggColor} size={105} />
+              <div
+                key={oAnim.k}
+                className={
+                  oAnim.type === "attack"
+                    ? "b-attack-l"
+                    : oAnim.type === "jump"
+                    ? "b-jump"
+                    : ""
+                }
+                style={{ display: "inline-block" }}
+              >
+                <MonsterIcon
+                  color={opponent.eggColor}
+                  size={105}
+                  expression={oAnim.expr}
+                />
+              </div>
               <div style={{ fontWeight: 900, color: "#2b1b10" }}>
                 {opponent.monsterName}
               </div>
@@ -491,6 +533,9 @@ export default function BattlePage() {
 
 function HpBar({ hp, max }: { hp: number; max: number }) {
   const percent = max > 0 ? Math.max(0, Math.round((hp / max) * 100)) : 0;
+  // 半分以下で黄色、2割以下で赤
+  const barColor =
+    percent <= 20 ? "#ff3b30" : percent <= 50 ? "#ffcc00" : "#34b85a";
 
   return (
     <div style={{ marginTop: 8 }}>
@@ -518,7 +563,7 @@ function HpBar({ hp, max }: { hp: number; max: number }) {
           style={{
             height: "100%",
             width: `${percent}%`,
-            background: "#34b85a",
+            background: barColor,
             transition: "0.3s"
           }}
         />
