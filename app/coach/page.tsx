@@ -1,5 +1,6 @@
 "use client";
 
+import StaffLogin from "@/components/StaffLogin";
 import { SeedType, seedLabels } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useRef, useState } from "react";
@@ -70,20 +71,30 @@ export default function CoachPage() {
   const [qrText, setQrText] = useState("");
   const [codes, setCodes] = useState<RewardCode[]>([]);
   const [userId, setUserId] = useState("");
+  const [checked, setChecked] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
   const genRef = useRef(false);
 
   useEffect(() => {
     load();
   }, []);
 
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.reload();
+  }
+
   async function load() {
     const { data: authData } = await supabase.auth.getUser();
     const uid = authData.user?.id;
 
     if (!uid) {
+      setLoggedIn(false);
+      setChecked(true);
       return;
     }
 
+    setLoggedIn(true);
     setUserId(uid);
 
     const { data: profile } = await supabase
@@ -108,6 +119,7 @@ export default function CoachPage() {
     }
 
     await loadCodes(r, uid);
+    setChecked(true);
   }
 
   // 今日の合言葉を読み込み。なければ自動で3つ生成する。
@@ -185,6 +197,55 @@ export default function CoachPage() {
     }
 
     setQrText(`SOWERS|${data.id}`);
+  }
+
+  if (!checked) {
+    return (
+      <main className="page">
+        <div className="phone">
+          <div className="header">指導者ページ</div>
+          <div className="content">
+            <div className="card">
+              <div className="title">確認中…</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!loggedIn) {
+    return (
+      <StaffLogin
+        title="指導者 ログイン"
+        note="指導者のメールアドレスとパスワードでログインしてください。"
+      />
+    );
+  }
+
+  if (role !== "coach" && role !== "admin") {
+    return (
+      <main className="page">
+        <div className="phone">
+          <div className="header">指導者ページ</div>
+          <div className="content">
+            <div className="card">
+              <div className="title">アクセスできません</div>
+              <div className="note">
+                この画面は指導者・管理者専用です。今ログイン中のアカウントには権限がありません。
+              </div>
+              <button
+                className="button orange"
+                onClick={logout}
+                style={{ marginTop: 10 }}
+              >
+                ログアウトして別のアカウントで入る
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
