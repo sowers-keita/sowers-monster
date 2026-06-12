@@ -23,7 +23,7 @@ type Opponent = {
 };
 
 const BSTAGE_SIZE: Record<string, number> = {
-  スタート期: 82,
+  スタート期: 64,
   ビギナー期: 98,
   ヒーロー期: 112,
   覚醒期: 126
