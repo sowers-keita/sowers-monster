@@ -22,7 +22,8 @@ type TrainingConfig = {
   type: TrainingType;
   stat: StatType;
   title: string;
-  description: string;
+  howto: string;
+  goals: string[];
   targetLabel: string;
 };
 
@@ -31,34 +32,105 @@ const trainings: TrainingConfig[] = [
     type: "friend",
     stat: "power",
     title: "連打トレーニング",
-    description: "10秒間でできるだけたくさんタップ！80回いじょうで パワー +1。",
+    howto: "10秒で できるだけ たくさん タップ！",
+    goals: ["90回で パワー +5", "80回で 種を ゲット🌱"],
     targetLabel: "パワー"
   },
   {
     type: "running",
     stat: "stamina",
     title: "ランニングトレーニング",
-    description:
-      "草原を100メートル走りきろう！タップで小ジャンプ・長押しで大ジャンプ。ゴールで スタミナ +1。",
+    howto: "タップで 小ジャンプ／長おしで 大ジャンプ。あなに おちないでね。",
+    goals: ["100mで スタミナ +5", "100mで 種も ゲット🌱"],
     targetLabel: "スタミナ"
   },
   {
     type: "stop",
     stat: "speed",
     title: "ストップトレーニング",
-    description:
-      "動くバーを緑ゾーンで れんぞく10回 止めよう！成功するほど速くなる。10連続で スピード +1！",
+    howto: "うごくバーを みどりゾーンで ストップ！",
+    goals: [
+      "10れんぞくで スピード +5 と 種🌱",
+      "れんぞくが つづくかぎり 時間を こえても つづく！"
+    ],
     targetLabel: "スピード"
   },
   {
     type: "thread",
     stat: "technique",
     title: "糸通しトレーニング",
-    description:
-      "長押しで上昇、はなすと下降。すき間を 30こ 通ると テクニックの種ゲット！1回でもぶつかったら おしまい！",
+    howto: "長おしで 上、はなすと 下。すき間を とおろう。1回でも ぶつかったら おしまい。",
+    goals: ["20枚で テクニック +5", "30枚で 種を ゲット🌱"],
     targetLabel: "テクニック"
   }
 ];
+
+// あそびかた＋もくひょう を まとめて わかりやすく見せる
+function Guide({ howto, goals }: { howto: string; goals: string[] }) {
+  return (
+    <div
+      style={{
+        background: "#fff7e9",
+        border: "3px solid #2b1b10",
+        borderRadius: 16,
+        padding: "10px 12px",
+        marginTop: 8
+      }}
+    >
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 900,
+          color: "#2b1b10",
+          lineHeight: 1.6
+        }}
+      >
+        <span
+          style={{
+            background: "#34b85a",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "1px 8px",
+            marginRight: 6,
+            fontSize: 12
+          }}
+        >
+          あそびかた
+        </span>
+        {howto}
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <span
+          style={{
+            background: "#ff7a00",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "1px 8px",
+            fontSize: 12,
+            fontWeight: 900
+          }}
+        >
+          もくひょう
+        </span>
+        <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
+          {goals.map((g, i) => (
+            <li
+              key={i}
+              style={{
+                fontSize: 14,
+                fontWeight: 900,
+                color: "#2b1b10",
+                lineHeight: 1.7
+              }}
+            >
+              {g}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 // トレーニングは1日それぞれ1回まで（localStorageで記録）
 // 日付はローカル（日本時間）基準にして、日付が変わったらリセットされるようにする
@@ -522,7 +594,7 @@ function PowerTraining({
     <div className="card">
       <EffectStyles />
       <div className="title">{config.title}</div>
-      <div className="note">{config.description}</div>
+      <Guide howto={config.howto} goals={config.goals} />
 
       <div
         style={{
@@ -594,9 +666,6 @@ function PowerTraining({
 
       <div className="note">
         のこり {timeLeft.toFixed(1)} 秒 ・ れんぞく {success} / 10
-      </div>
-      <div className="note">
-        成功 1〜3回で +1・4〜5回で +2・6回以上で +3。10連続で 種ゲット！
       </div>
 
       <button className="button red" onClick={stop}>
@@ -760,7 +829,7 @@ function ThreadTraining({
   return (
     <div className="card">
       <div className="title">{config.title}</div>
-      <div className="note">{config.description}</div>
+      <Guide howto={config.howto} goals={config.goals} />
 
       <div
         style={{
@@ -821,9 +890,6 @@ function ThreadTraining({
         {message}
       </div>
       <div className="note">通過：{passedView} 枚</div>
-      <div className="note">
-        3枚以下で +1・4〜6枚で +2・7枚以上で +3。30枚で 種ゲット！
-      </div>
 
       {!started && !finished && (
         <button className="button blue" onClick={start}>
@@ -995,7 +1061,7 @@ function TapTraining({
     <div className="card">
       <EffectStyles />
       <div className="title">{config.title}</div>
-      <div className="note">{config.description}</div>
+      <Guide howto={config.howto} goals={config.goals} />
 
       <div
         style={{
@@ -1034,9 +1100,6 @@ function TapTraining({
         </div>
       </div>
 
-      <div className="note" style={{ marginTop: 12 }}>
-        30回以下で +1・31〜70回で +2・71回以上で +3。80回で 種ゲット！
-      </div>
 
       <button className="button red" onClick={tap}>
         {started ? "連打！" : "スタート（タップ！）"}
@@ -1296,7 +1359,7 @@ function RunningTraining({
   return (
     <div className="card">
       <div className="title">{config.title}</div>
-      <div className="note">{config.description}</div>
+      <Guide howto={config.howto} goals={config.goals} />
 
       <div
         onMouseDown={pressJump}
@@ -1409,9 +1472,6 @@ function RunningTraining({
 
       <div className="title" style={{ marginTop: 12, fontSize: 18 }}>
         {message}
-      </div>
-      <div className="note">
-        10m以下で +1・11〜30mで +2・31m以上で +3。100mで 種ゲット！
       </div>
 
       {!started && !finished && (
