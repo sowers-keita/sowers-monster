@@ -1,7 +1,7 @@
 "use client";
 
 import StaffLogin from "@/components/StaffLogin";
-import { SeedType, seedLabels } from "@/lib/game";
+import { SeedType, seedDescriptions, seedLabels } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
 
@@ -301,8 +301,11 @@ export default function CoachPage() {
               <option value="all">万能の種</option>
               <option value="rainbow">虹の種</option>
             </select>
+            <div className="note">
+              {seedDescriptions[codeSeedType]}（能力の上がり幅は種類で決まります）
+            </div>
 
-            <label className="label">上昇量</label>
+            <label className="label">もらえる個数（種の数）</label>
             <input
               className="input"
               type="number"
@@ -342,7 +345,7 @@ export default function CoachPage() {
                       {c.code}
                     </div>
                     <div className="note">
-                      {seedLabels[c.seed_type]} +{c.amount}
+                      {seedLabels[c.seed_type]} ×{c.amount}こ
                     </div>
                     <button
                       onClick={() => deleteCode(c.id)}
@@ -399,7 +402,7 @@ export default function CoachPage() {
               <option value="rainbow">虹の種</option>
             </select>
 
-            <label className="label">個数・上昇量</label>
+            <label className="label">もらえる個数（種の数）</label>
             <input
               className="input"
               type="number"
@@ -434,7 +437,7 @@ export default function CoachPage() {
                 {qrText}
               </div>
               <div className="note">
-                種：{seedLabels[seedType]} +{amount}
+                種：{seedLabels[seedType]} ×{amount}こ
               </div>
             </div>
           )}
