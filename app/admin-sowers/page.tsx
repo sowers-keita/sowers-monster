@@ -1,5 +1,6 @@
 "use client";
 
+import StaffLogin from "@/components/StaffLogin";
 import { SeedType } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import { useEffect, useState } from "react";
 export default function AdminSowersPage() {
   const [role, setRole] = useState("");
   const [checked, setChecked] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const [missionTitle, setMissionTitle] =
     useState("片足立ち30秒チャレンジ");
@@ -34,9 +36,12 @@ export default function AdminSowersPage() {
     const userId = authData.user?.id;
 
     if (!userId) {
+      setLoggedIn(false);
       setChecked(true);
       return;
     }
+
+    setLoggedIn(true);
 
     const { data } = await supabase
       .from("profiles")
@@ -46,6 +51,11 @@ export default function AdminSowersPage() {
 
     setRole(data?.role || "");
     setChecked(true);
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.reload();
   }
 
   async function saveHqMission() {
@@ -116,6 +126,15 @@ export default function AdminSowersPage() {
     );
   }
 
+  if (!loggedIn) {
+    return (
+      <StaffLogin
+        title="本部管理 ログイン"
+        note="本部管理者のメールアドレスとパスワードでログインしてください。"
+      />
+    );
+  }
+
   if (role !== "admin") {
     return (
       <main className="page">
@@ -125,8 +144,15 @@ export default function AdminSowersPage() {
             <div className="card">
               <div className="title">アクセスできません</div>
               <div className="note">
-                この画面は本部管理者専用です。通常アプリ内には入口を置きません。
+                この画面は本部管理者専用です。今ログイン中のアカウントには管理者権限がありません。
               </div>
+              <button
+                className="button orange"
+                onClick={logout}
+                style={{ marginTop: 10 }}
+              >
+                ログアウトして別のアカウントで入る
+              </button>
             </div>
           </div>
         </div>
