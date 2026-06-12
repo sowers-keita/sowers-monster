@@ -609,7 +609,12 @@ export default function BattlePage() {
                     ? "b-jump"
                     : ""
                 }
-                style={{ display: "inline-block" }}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  height: 130
+                }}
               >
                 <MonsterIcon
                   color={monster.egg_color}
@@ -637,7 +642,12 @@ export default function BattlePage() {
                     ? "b-jump"
                     : ""
                 }
-                style={{ display: "inline-block" }}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  height: 130
+                }}
               >
                 <MonsterIcon
                   color={opponent.eggColor}
