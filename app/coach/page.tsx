@@ -3,7 +3,7 @@
 import StaffLogin from "@/components/StaffLogin";
 import { SeedType, seedLabels } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Classroom = {
   id: string;
@@ -36,30 +36,10 @@ const CODE_WORDS = [
   "つばさ",
   "ひかり"
 ];
-const CODE_SEEDS: SeedType[] = ["power", "stamina", "speed", "technique"];
-
 function makeCode() {
   const w = CODE_WORDS[Math.floor(Math.random() * CODE_WORDS.length)];
   const n = Math.floor(10 + Math.random() * 90);
   return `${w}${n}`;
-}
-
-function makeThreeCodes() {
-  const used = new Set<string>();
-  const out: { code: string; seed_type: SeedType; amount: number }[] = [];
-  while (out.length < 3) {
-    const code = makeCode();
-    if (used.has(code)) {
-      continue;
-    }
-    used.add(code);
-    out.push({
-      code,
-      seed_type: CODE_SEEDS[Math.floor(Math.random() * CODE_SEEDS.length)],
-      amount: 1 + Math.floor(Math.random() * 2)
-    });
-  }
-  return out;
 }
 
 export default function CoachPage() {
@@ -70,10 +50,12 @@ export default function CoachPage() {
   const [amount, setAmount] = useState(3);
   const [qrText, setQrText] = useState("");
   const [codes, setCodes] = useState<RewardCode[]>([]);
+  const [codeSeedType, setCodeSeedType] = useState<SeedType>("power");
+  const [codeAmount, setCodeAmount] = useState(1);
+  const [codeText, setCodeText] = useState(() => makeCode());
   const [userId, setUserId] = useState("");
   const [checked, setChecked] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
-  const genRef = useRef(false);
 
   useEffect(() => {
     load();
@@ -122,8 +104,8 @@ export default function CoachPage() {
     setChecked(true);
   }
 
-  // 今日の合言葉を読み込み。なければ自動で3つ生成する。
-  async function loadCodes(r: string, uid: string) {
+  // 今日の合言葉を読み込み（自動生成はしない。種類は指導者が選んで作る）
+  async function loadCodes(_r: string, _uid: string) {
     const today = new Date().toISOString().slice(0, 10);
 
     const { data } = await supabase
@@ -132,34 +114,59 @@ export default function CoachPage() {
       .eq("code_date", today)
       .order("created_at");
 
-    let rows = (data || []) as RewardCode[];
-
-    if (rows.length === 0 && (r === "coach" || r === "admin") && !genRef.current) {
-      genRef.current = true;
-      const three = makeThreeCodes();
-      const { data: inserted } = await supabase
-        .from("reward_codes")
-        .insert(
-          three.map((t) => ({
-            ...t,
-            code_date: today,
-            created_by: uid
-          }))
-        )
-        .select("id, code, seed_type, amount");
-      rows = (inserted || []) as RewardCode[];
-    }
-
-    setCodes(rows);
+    setCodes((data || []) as RewardCode[]);
   }
 
-  async function makeCodesNow() {
+  // 指導者が「種の種類」と「上昇量」を選んで、あいことばを1つ作る
+  async function createCode() {
     if (role !== "coach" && role !== "admin") {
       alert("指導者または管理者のみ作成できます");
       return;
     }
-    genRef.current = false;
-    await loadCodes(role, userId);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const code = codeText.trim() || makeCode();
+
+    const { data: inserted, error } = await supabase
+      .from("reward_codes")
+      .insert({
+        code,
+        seed_type: codeSeedType,
+        amount: codeAmount,
+        code_date: today,
+        created_by: userId
+      })
+      .select("id, code, seed_type, amount")
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setCodes((prev) => [...prev, inserted as RewardCode]);
+    // 次の入力用に新しいランダム候補をセット
+    setCodeText(makeCode());
+  }
+
+  async function deleteCode(id: string) {
+    if (role !== "coach" && role !== "admin") {
+      return;
+    }
+
+    const ok = window.confirm("この あいことばを 消しますか？");
+    if (!ok) {
+      return;
+    }
+
+    const { error } = await supabase.from("reward_codes").delete().eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setCodes((prev) => prev.filter((c) => c.id !== id));
   }
 
   async function createQr() {
@@ -257,16 +264,61 @@ export default function CoachPage() {
           <div className="card" style={{ background: "#fff7e6" }}>
             <div className="title">今日の あいことば（種がもらえる）</div>
             <div className="note">
-              毎日 自動で 3つ できます。子どもに この あいことばを 伝えると、
-              ミッション画面で 入力して 種を もらえます。
+              あいことばと「種の種類・量」を自分で決めて作れます。子どもに この
+              あいことばを 伝えると、ミッション画面で 入力して 種を もらえます。
             </div>
 
-            {codes.length === 0 ? (
-              <button className="button orange" onClick={makeCodesNow}>
-                今日の あいことばを 作る
+            <label className="label">あいことば（変更できます）</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                className="input"
+                value={codeText}
+                onChange={(event) => setCodeText(event.target.value)}
+                placeholder="例：そら12"
+                style={{ flex: 1 }}
+              />
+              <button
+                className="button"
+                onClick={() => setCodeText(makeCode())}
+                style={{ width: "auto", padding: "0 14px", whiteSpace: "nowrap" }}
+              >
+                ランダム
               </button>
-            ) : (
-              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            </div>
+
+            <label className="label">種の種類</label>
+            <select
+              className="input"
+              value={codeSeedType}
+              onChange={(event) =>
+                setCodeSeedType(event.target.value as SeedType)
+              }
+            >
+              <option value="power">パワーの種</option>
+              <option value="stamina">スタミナの種</option>
+              <option value="speed">スピードの種</option>
+              <option value="technique">テクニックの種</option>
+              <option value="all">万能の種</option>
+              <option value="rainbow">虹の種</option>
+            </select>
+
+            <label className="label">上昇量</label>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={10}
+              value={codeAmount}
+              onChange={(event) => setCodeAmount(Number(event.target.value))}
+            />
+
+            <button className="button orange" onClick={createCode}>
+              この あいことばを 作る
+            </button>
+
+            {codes.length > 0 && (
+              <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+                <div className="note">今日 作った あいことば</div>
                 {codes.map((c) => (
                   <div
                     key={c.id}
@@ -275,7 +327,8 @@ export default function CoachPage() {
                       border: "3px solid #2b1b10",
                       borderRadius: 14,
                       padding: 12,
-                      textAlign: "center"
+                      textAlign: "center",
+                      position: "relative"
                     }}
                   >
                     <div
@@ -291,6 +344,22 @@ export default function CoachPage() {
                     <div className="note">
                       {seedLabels[c.seed_type]} +{c.amount}
                     </div>
+                    <button
+                      onClick={() => deleteCode(c.id)}
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        right: 8,
+                        background: "transparent",
+                        border: "none",
+                        color: "#b91c1c",
+                        fontWeight: 900,
+                        fontSize: 13,
+                        cursor: "pointer"
+                      }}
+                    >
+                      けす
+                    </button>
                   </div>
                 ))}
               </div>
