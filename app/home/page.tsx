@@ -16,7 +16,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { EggColor } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 type HomeMonster = {
   id: string;
@@ -74,48 +74,116 @@ const STATS: {
   { key: "technique", maxKey: "technique_max", label: "テクニック", color: "#9b51e0", train: "thread" }
 ];
 
-// はじめての人むけ チュートリアル（ほぼ ひらがな）
-type Slide = { icon: string; title: string; text: string };
+// はじめての人むけ チュートリアル（漢字＋ふりがな）
+type Slide = { icon: string; title: ReactNode; text: ReactNode };
 const SLIDES: Slide[] = [
   {
     icon: "🥚✨",
     title: "ようこそ！",
-    text: "サワーズモンスターへ ようこそ！ じぶんだけの モンスターを そだてる ゲームだよ。"
+    text: (
+      <>
+        サワーズモンスターへ ようこそ！
+        <br />
+        <ruby>自分<rt>じぶん</rt></ruby>だけの モンスターを
+        <br />
+        <ruby>育<rt>そだ</rt></ruby>てる ゲームだよ。
+      </>
+    )
   },
   {
     icon: "🐣",
-    title: "そだてよう",
-    text: "トレーニングや バトルで モンスターを つよく そだてるよ。そだてると すがたも かわる！"
+    title: (
+      <>
+        <ruby>育<rt>そだ</rt></ruby>てよう
+      </>
+    ),
+    text: (
+      <>
+        トレーニングや バトルで
+        <br />
+        モンスターを <ruby>強<rt>つよ</rt></ruby>く <ruby>育<rt>そだ</rt></ruby>てるよ。
+        <br />
+        <ruby>育<rt>そだ</rt></ruby>てると すがたも <ruby>変<rt>か</rt></ruby>わる！
+      </>
+    )
   },
   {
     icon: "💪",
     title: "トレーニング",
-    text: "4つの ミニゲームで つよくなる。1日 1かい「たね」も もらえるよ。"
+    text: (
+      <>
+        4つの ミニゲームで <ruby>強<rt>つよ</rt></ruby>くなる。
+        <br />
+        1<ruby>日<rt>にち</rt></ruby>1<ruby>回<rt>かい</rt></ruby>「たね」も もらえるよ。
+      </>
+    )
   },
   {
     icon: "🌱",
     title: "たね",
-    text: "ミッション・あいことば・ランキングじょうい でも たねが もらえる。たねを つかうと もっと つよく！"
+    text: (
+      <>
+        ミッション・あいことば・
+        <br />
+        ランキング<ruby>上位<rt>じょうい</rt></ruby>でも たねが もらえる。
+        <br />
+        たねを <ruby>使<rt>つか</rt></ruby>うと もっと <ruby>強<rt>つよ</rt></ruby>く！
+      </>
+    )
   },
   {
     icon: "✨",
-    title: "しんか",
-    text: "じゅうぶん つよくすると、ボタンを おして しんか（へんしん）できるよ。"
+    title: (
+      <>
+        <ruby>進化<rt>しんか</rt></ruby>
+      </>
+    ),
+    text: (
+      <>
+        <ruby>強<rt>つよ</rt></ruby>くすると、ボタンを <ruby>押<rt>お</rt></ruby>して
+        <br />
+        <ruby>進化<rt>しんか</rt></ruby>（<ruby>変身<rt>へんしん</rt></ruby>）できるよ。
+      </>
+    )
   },
   {
     icon: "⚔️",
     title: "バトル",
-    text: "ぜんこくの みんなや、ともだちと たたかえる。かつと せんとうりょくが アップ！"
+    text: (
+      <>
+        <ruby>全国<rt>ぜんこく</rt></ruby>の みんなや、<ruby>友<rt>とも</rt></ruby>だちと
+        <br />
+        <ruby>戦<rt>たたか</rt></ruby>える。<ruby>勝<rt>か</rt></ruby>つと <ruby>戦闘力<rt>せんとうりょく</rt></ruby>アップ！
+      </>
+    )
   },
   {
     icon: "🌅",
-    title: "たびだち",
-    text: "1かげつで モンスターは たびだち。ずかんに のって、つぎの たまごを えらべるよ。"
+    title: (
+      <>
+        <ruby>旅立<rt>たびだ</rt></ruby>ち
+      </>
+    ),
+    text: (
+      <>
+        1<ruby>か月<rt>かげつ</rt></ruby>で モンスターは <ruby>旅立<rt>たびだ</rt></ruby>ち。
+        <br />
+        <ruby>図鑑<rt>ずかん</rt></ruby>に <ruby>載<rt>の</rt></ruby>って、
+        <br />
+        <ruby>次<rt>つぎ</rt></ruby>の <ruby>卵<rt>たまご</rt></ruby>を <ruby>選<rt>えら</rt></ruby>べるよ。
+      </>
+    )
   },
   {
     icon: "🚀",
     title: "はじめよう！",
-    text: "まずは「💪トレーニング」で つよくしよう！ がんばってね！"
+    text: (
+      <>
+        まずは「💪トレーニング」で
+        <br />
+        <ruby>強<rt>つよ</rt></ruby>くしよう！ がんばってね！
+      </>
+    )
   }
 ];
 
@@ -218,27 +286,32 @@ export default function HomePage() {
 
     let m = activeMonster as HomeMonster;
 
-    // 1日にそれぞれの限界値が +1 ずつ成長
+    // 限界値は「生まれた日」から1日ごとに +1 ずつ成長する。
+    // （リセット＝新しいモンスターは created_at が新しくなるので、また20からスタート）
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = new Date().toLocaleDateString("sv-SE"); // ローカル日付
 
-    if (m.last_growth_date) {
-      const last = new Date(m.last_growth_date);
-      last.setHours(0, 0, 0, 0);
-      const days = Math.floor((today.getTime() - last.getTime()) / 86400000);
-      if (days > 0) {
-        const grown = {
-          power_max: m.power_max + days,
-          stamina_max: m.stamina_max + days,
-          speed_max: m.speed_max + days,
-          technique_max: m.technique_max + days,
-          last_growth_date: todayStr
-        };
-        await supabase.from("monsters").update(grown).eq("id", m.id);
-        m = { ...m, ...grown };
-      }
-    } else {
+    // 成長を数える起点：すでに成長を反映した日があればそれ、なければ「生まれた日」
+    const fromBase = new Date(m.last_growth_date || m.created_at);
+    fromBase.setHours(0, 0, 0, 0);
+    const days = Math.max(
+      0,
+      Math.floor((today.getTime() - fromBase.getTime()) / 86400000)
+    );
+
+    if (days > 0) {
+      const grown = {
+        power_max: m.power_max + days,
+        stamina_max: m.stamina_max + days,
+        speed_max: m.speed_max + days,
+        technique_max: m.technique_max + days,
+        last_growth_date: todayStr
+      };
+      await supabase.from("monsters").update(grown).eq("id", m.id);
+      m = { ...m, ...grown };
+    } else if (!m.last_growth_date) {
+      // 生まれた当日など：起点だけ記録（成長は0）
       await supabase
         .from("monsters")
         .update({ last_growth_date: todayStr })
@@ -412,6 +485,7 @@ export default function HomePage() {
 .evo-ready{animation:evo-pulse 1s ease-in-out infinite;}
 @keyframes stat-flash{0%{box-shadow:0 0 0 0 rgba(255,210,60,.9);}100%{box-shadow:0 0 0 14px rgba(255,210,60,0);}}
 .stat-flash{animation:stat-flash .7s ease-out;}
+ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
 `}</style>
 
       <div className="phone">
