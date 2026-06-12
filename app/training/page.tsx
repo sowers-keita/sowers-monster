@@ -391,6 +391,7 @@ function PowerTraining({
   const totalRef = useRef(0); // 合計成功（能力アップ用）
   const seedReachedRef = useRef(false); // 10連続で種ゲット（その後も続く）
   const firedRef = useRef(false);
+  const timeUpRef = useRef(false); // 時間切れフラグ（連続が続く限りは終わらない）
 
   const [success, setSuccess] = useState(0);
   const [timeLeft, setTimeLeft] = useState(10);
@@ -401,6 +402,19 @@ function PowerTraining({
     []
   );
   const fxId = useRef(0);
+
+  // 終了処理（最高連続記録で 配点。10連続=5点）
+  function finishGame() {
+    if (firedRef.current) {
+      return;
+    }
+    firedRef.current = true;
+    setFinished(true);
+    const ms = maxStreakRef.current;
+    const pts =
+      ms >= 10 ? 5 : ms >= 8 ? 4 : ms >= 6 ? 3 : ms >= 3 ? 2 : ms >= 1 ? 1 : 0;
+    onClear(pts, seedReachedRef.current, `さいこう ${ms} 連続！`, ms);
+  }
 
   // バーの動き（常に動く）
   useEffect(() => {
@@ -440,21 +454,13 @@ function PowerTraining({
 
         if (next <= 0) {
           window.clearInterval(timer);
-          setFinished(true);
-
-          if (!firedRef.current) {
-            firedRef.current = true;
-            // 合計成功数で スピードUP（種は10連続のみ）
-            const t = totalRef.current;
-            const pts = t <= 3 ? 1 : t <= 5 ? 2 : 3;
-            onClear(
-              t > 0 ? pts : 0,
-              seedReachedRef.current,
-              `さいこう ${maxStreakRef.current} 連続！`,
-              maxStreakRef.current
-            );
+          timeUpRef.current = true;
+          // 連続が続いていなければ終了。続いているうちは ミスするまで終わらない！
+          if (successRef.current <= 0) {
+            finishGame();
+          } else {
+            setMessage("じかんアップ！ れんぞくが つづくかぎり まだ いける！");
           }
-
           return 0;
         }
 
@@ -463,7 +469,8 @@ function PowerTraining({
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [started, finished, onClear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, finished]);
 
   function stop() {
     if (finished) {
@@ -501,7 +508,13 @@ function PowerTraining({
     } else {
       successRef.current = 0;
       setSuccess(0);
-      setMessage("れんぞく リセット…");
+      // 時間切れのあとで れんぞくが きれたら、ここで終了
+      if (timeUpRef.current) {
+        setMessage("れんぞく しゅうりょう！");
+        finishGame();
+      } else {
+        setMessage("れんぞく リセット…");
+      }
     }
   }
 
@@ -705,7 +718,8 @@ function ThreadTraining({
       if (hit) {
         s.finished = true;
         setFinished(true);
-        const pts = s.passed <= 3 ? 1 : s.passed <= 6 ? 2 : 3;
+        const pts =
+          s.passed >= 20 ? 5 : s.passed >= 12 ? 4 : s.passed >= 7 ? 3 : s.passed >= 3 ? 2 : 1;
         setMessage(
           `ぶつかった！ ${s.passed}こ 通過（テクニック +${pts}）${
             s.seedReached ? "・種ゲット！" : ""
@@ -941,7 +955,8 @@ function TapTraining({
           if (!firedRef.current) {
             firedRef.current = true;
             const c = countRef.current;
-            const pts = c <= 30 ? 1 : c <= 70 ? 2 : 3;
+            const pts =
+              c >= 90 ? 5 : c >= 70 ? 4 : c >= 50 ? 3 : c >= 30 ? 2 : 1;
             onClear(pts, c >= 80, `連打 ${c} 回！`, c);
           }
 
@@ -1203,7 +1218,8 @@ function RunningTraining({
         s.finished = true;
         setFinished(true);
         const meters = Math.max(0, Math.floor(s.charX));
-        const pts = meters <= 10 ? 1 : meters <= 30 ? 2 : 3;
+        const pts =
+          meters >= 100 ? 5 : meters >= 60 ? 4 : meters >= 30 ? 3 : meters >= 10 ? 2 : 1;
         setMessage(
           `${meters}メートル！ スタミナ +${pts}${
             s.seedReached ? "・種ゲット！" : "（ゴールは100m）"
