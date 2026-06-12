@@ -61,6 +61,14 @@ const NEXT_STAGE: Record<string, string> = {
   ヒーロー期: "覚醒期"
 };
 
+// ホームのキャラ表示サイズ（進化するほど 少し大きく）
+const STAGE_SIZE: Record<string, number> = {
+  スタート期: 108,
+  ビギナー期: 124,
+  ヒーロー期: 140,
+  覚醒期: 156
+};
+
 type StatKey = "power" | "stamina" | "speed" | "technique";
 const STATS: {
   key: StatKey;
@@ -590,7 +598,7 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
                 <div className="monster-hopper">
                   <MonsterIcon
                     color={monster.egg_color}
-                    size={128}
+                    size={STAGE_SIZE[monster.stage] ?? 128}
                     happy={happy}
                     stage={monster.stage}
                     speed={monster.speed}
