@@ -725,12 +725,7 @@ function ThreadTraining({
         return;
       }
 
-      // 鳥の上下
-      s.y += s.pressing ? -2.4 : 2.4;
-      if (s.y < 5) s.y = 5;
-      if (s.y > 95) s.y = 95;
-
-      // 壁を左へ（5枚目までは0.7倍速、20枚から1.25倍、30枚から1.4倍）
+      // 速さ（5枚目までは0.7倍速、20枚から1.25倍、30枚から1.4倍）
       const sf =
         s.passed < 5
           ? 0.7
@@ -739,6 +734,13 @@ function ThreadTraining({
           : s.passed < 30
           ? 1.25
           : 1.4;
+
+      // 鳥の上下（速さに合わせて鳥もキビキビ動く＝速くても操作できる）
+      s.y += (s.pressing ? -2.4 : 2.4) * sf;
+      if (s.y < 5) s.y = 5;
+      if (s.y > 95) s.y = 95;
+
+      // 壁を左へ
       for (const w of s.walls) {
         w.x -= 1.7 * sf;
       }
