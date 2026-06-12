@@ -119,6 +119,9 @@ export default function ParentSettingsPage() {
     // 種を 0 に
     await supabase.from("seeds").update({ count: 0 }).eq("child_id", childId);
 
+    // ミニゲームランキングの記録も消す（リセット）
+    await supabase.from("game_scores").delete().eq("child_id", childId);
+
     // トレーニングの「きょうの種」記録を消す
     try {
       Object.keys(localStorage)
