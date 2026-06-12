@@ -49,10 +49,11 @@ type TopRow = {
   technique: number;
 };
 
+// 進化に必要な「4つの能力の合計」
 const EVO_THRESHOLD: Record<string, number> = {
-  スタート期: 20,
-  ビギナー期: 60,
-  ヒーロー期: 120
+  スタート期: 100,
+  ビギナー期: 250,
+  ヒーロー期: 400
 };
 const NEXT_STAGE: Record<string, string> = {
   スタート期: "ビギナー期",
