@@ -14,12 +14,23 @@ type Opponent = {
   classroom: string;
   monsterName: string;
   eggColor: EggColor;
+  stage?: string;
   hp: number;
   power: number;
   stamina: number;
   speed: number;
   technique: number;
 };
+
+const BSTAGE_SIZE: Record<string, number> = {
+  スタート期: 82,
+  ビギナー期: 98,
+  ヒーロー期: 112,
+  覚醒期: 126
+};
+function bSize(stage?: string) {
+  return (stage && BSTAGE_SIZE[stage]) || 105;
+}
 
 // ===== マッチング履歴（同じ相手ばかりにならないように） =====
 const SAME_OPP_DAILY_LIMIT = 2; // 同じ相手とは1日2回まで
@@ -116,6 +127,7 @@ type RealMonsterRow = {
   id: string;
   name: string;
   egg_color: EggColor;
+  stage?: string;
   power: number;
   stamina: number;
   stamina_max: number;
@@ -223,7 +235,7 @@ export default function BattlePage() {
     const { data: others } = await supabase
       .from("monsters")
       .select(
-        `id, name, egg_color, power, stamina, stamina_max, speed, technique, child_id,
+        `id, name, egg_color, stage, power, stamina, stamina_max, speed, technique, child_id,
          children ( name, classroom_id, classrooms ( name ) )`
       )
       .eq("is_active", true)
@@ -241,6 +253,7 @@ export default function BattlePage() {
         classroom: pick.children?.classrooms?.name || "Sowers Club",
         monsterName: pick.name,
         eggColor: pick.egg_color,
+        stage: pick.stage,
         hp: hpFromStamina(pick.stamina),
         power: Math.max(1, pick.power + 10),
         stamina: pick.stamina,
@@ -600,7 +613,7 @@ export default function BattlePage() {
               >
                 <MonsterIcon
                   color={monster.egg_color}
-                  size={105}
+                  size={bSize(monster.stage)}
                   expression={pAnim.expr}
                   stage={monster.stage}
                   speed={monster.speed}
@@ -628,8 +641,11 @@ export default function BattlePage() {
               >
                 <MonsterIcon
                   color={opponent.eggColor}
-                  size={105}
+                  size={bSize(opponent.stage)}
                   expression={oAnim.expr}
+                  stage={opponent.stage}
+                  speed={opponent.speed}
+                  technique={opponent.technique}
                 />
               </div>
               <div style={{ fontWeight: 900, color: "#2b1b10" }}>
