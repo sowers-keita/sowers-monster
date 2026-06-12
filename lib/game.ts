@@ -356,15 +356,15 @@ export function calcEvolutionReady(monster: ActiveMonster) {
     monster.speed +
     monster.technique;
 
-  if (monster.stage === "スタート期" && total >= 20) {
+  if (monster.stage === "スタート期" && total >= 100) {
     return true;
   }
 
-  if (monster.stage === "ビギナー期" && total >= 60) {
+  if (monster.stage === "ビギナー期" && total >= 250) {
     return true;
   }
 
-  if (monster.stage === "ヒーロー期" && total >= 120) {
+  if (monster.stage === "ヒーロー期" && total >= 400) {
     return true;
   }
 
