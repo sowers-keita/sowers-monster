@@ -63,7 +63,7 @@ const NEXT_STAGE: Record<string, string> = {
 
 // ホームのキャラ表示サイズ（進化するほど 少し大きく）
 const STAGE_SIZE: Record<string, number> = {
-  スタート期: 88,
+  スタート期: 70,
   ビギナー期: 116,
   ヒーロー期: 138,
   覚醒期: 158
