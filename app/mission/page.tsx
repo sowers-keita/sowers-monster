@@ -168,7 +168,7 @@ export default function MissionPage() {
       return;
     }
 
-    // すでに使っていないか（1人1回）
+    // すでに使っていないか（1人1回）。先にログを入れて重複を防止する。
     const { error: logError } = await supabase
       .from("reward_code_logs")
       .insert({ child_id: childId, reward_code_id: code.id });
@@ -186,7 +186,16 @@ export default function MissionPage() {
       );
       setCodeInput("");
     } catch (e) {
-      setCodeMsg(e instanceof Error ? e.message : "種の付与に失敗しました");
+      // 種付与に失敗したら、先に入れたログを取り消して再挑戦できるようにする
+      // （これをしないと「もう つかった」状態で種が永久にもらえなくなる）
+      await supabase
+        .from("reward_code_logs")
+        .delete()
+        .eq("child_id", childId)
+        .eq("reward_code_id", code.id);
+      setCodeMsg(
+        "種の付与に失敗しました。通信を確認して もう一度お試しください。"
+      );
     }
 
     setCodeBusy(false);
