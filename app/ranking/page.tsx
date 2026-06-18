@@ -116,7 +116,15 @@ export default function RankingPage() {
       return;
     }
 
-    const rankingRows = (data || []) as unknown as RankingRow[];
+    // 1人(子)につき1表示にするため、child_idで重複排除（先頭=最高戦闘力を採用）
+    const allRows = (data || []) as unknown as RankingRow[];
+    const seenChild = new Set<string>();
+    const rankingRows = allRows.filter((row) => {
+      if (!row.child_id) return true;
+      if (seenChild.has(row.child_id)) return false;
+      seenChild.add(row.child_id);
+      return true;
+    });
     setRows(rankingRows);
 
     const index = rankingRows.findIndex((row) => row.id === myMonster.id);
