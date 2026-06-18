@@ -1126,7 +1126,7 @@ function ThreadTraining({
   });
 
   const BIRD_X = 18;
-  const HALF_GAP = 20;
+  const HALF_GAP = 27;
   const WALL_HALF = 7;
 
   useEffect(() => {
