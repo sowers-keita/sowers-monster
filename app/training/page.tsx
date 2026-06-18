@@ -2,6 +2,7 @@
 
 import BottomNav from "@/components/BottomNav";
 import MonsterIcon from "@/components/MonsterIcon";
+import CelebrationConfetti from "@/components/CelebrationConfetti";
 import {
   ActiveMonster,
   GameType,
@@ -504,6 +505,7 @@ export default function TrainingPage() {
   const [gotSeed, setGotSeed] = useState(false);
   const [resultText, setResultText] = useState("");
   const [rankText, setRankText] = useState("");
+  const [celebrateKey, setCelebrateKey] = useState(0);
   const [doneToday, setDoneToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -552,6 +554,7 @@ export default function TrainingPage() {
 
     // ミニゲームの今週のベストスコアを保存し、今週の順位を出す
     let rank = "";
+    let topTen = false;
     if (score && score > 0) {
       try {
         await saveGameScore(monster.child_id, config.type, score);
@@ -560,12 +563,14 @@ export default function TrainingPage() {
         const idx = ranking.findIndex((r) => r.child_id === monster.child_id);
         if (idx >= 0) {
           rank = `今週のランキング ${idx + 1}位 / ${ranking.length}人中`;
+          topTen = idx < 10;
         }
       } catch {
         // 失敗しても続行
       }
     }
     setRankText(rank);
+    if (topTen) setCelebrateKey(Date.now()); // トップ10入りでお祝い
 
     // 能力値（現在値）を上げる
     if (statPoints > 0) {
@@ -622,18 +627,22 @@ export default function TrainingPage() {
   ): Promise<string> {
     if (!monster) return "";
     let rank = "";
+    let topTen = false;
     if (score > 0) {
       try {
         await saveGameScore(monster.child_id, gameType, score);
         const ws = ymdLocal(mondayStart());
         const ranking = await getGameRanking(gameType, ws, 500);
         const idx = ranking.findIndex((r) => r.child_id === monster.child_id);
-        if (idx >= 0)
+        if (idx >= 0) {
           rank = `今週のランキング ${idx + 1}位 / ${ranking.length}人中`;
+          topTen = idx < 10;
+        }
       } catch {
         // 続行
       }
     }
+    if (topTen) setCelebrateKey(Date.now()); // トップ10入りでお祝い
     if (statPoints > 0) {
       const update: Partial<ActiveMonster> = {};
       for (const st of stats) {
@@ -678,6 +687,7 @@ export default function TrainingPage() {
 
   return (
     <main className="page">
+      <CelebrationConfetti fireKey={celebrateKey} />
       <div className="phone">
         <div className="header">トレーニング</div>
 
