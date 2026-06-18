@@ -508,12 +508,21 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
             gap: 8
           }}
         >
-          <div style={{ display: "flex", alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: "#fff",
+              borderRadius: 14,
+              padding: "5px 13px",
+              boxShadow: "0 3px 0 rgba(0,0,0,0.14)"
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/tane_logo.png"
               alt="sowers たねもん"
-              style={{ height: 36, display: "block" }}
+              style={{ height: 30, display: "block" }}
             />
           </div>
           <div
