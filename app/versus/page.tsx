@@ -2,7 +2,7 @@
 
 import BottomNav from "@/components/BottomNav";
 import MonsterIcon from "@/components/MonsterIcon";
-import { ActiveMonster, getMyActiveMonster } from "@/lib/game";
+import { ActiveMonster, addSeedToChild, getMyActiveMonster } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { EggColor } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -65,6 +65,11 @@ function versusKey(myChild: string, oppId: string) {
   return `swm_versus_${myChild}_${oppId}_${todayStr()}`;
 }
 
+// オフライン対戦の累計（相手を問わず合計）。虹の種ゲージ用。
+function versusTotalKey(myChild: string) {
+  return `swm_versus_total_${myChild}`;
+}
+
 export default function VersusPage() {
   const router = useRouter();
 
@@ -95,6 +100,7 @@ export default function VersusPage() {
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
   const [resultText, setResultText] = useState("");
+  const [gotRainbow, setGotRainbow] = useState(false);
 
   useEffect(() => {
     loadMonster();
@@ -343,6 +349,19 @@ export default function VersusPage() {
       const k = versusKey(monster.child_id, opp.id);
       const used = Number(localStorage.getItem(k) || "0");
       localStorage.setItem(k, String(used + 1));
+    } catch {
+      // 無視
+    }
+
+    // オフライン対戦の累計を +1。10回ごとに「虹の種」を付与（オフラインのみ）
+    try {
+      const tk = versusTotalKey(monster.child_id);
+      const total = Number(localStorage.getItem(tk) || "0") + 1;
+      localStorage.setItem(tk, String(total));
+      if (total % 10 === 0) {
+        await addSeedToChild(monster.child_id, "rainbow", 1);
+        setGotRainbow(true);
+      }
     } catch {
       // 無視
     }
@@ -607,6 +626,75 @@ export default function VersusPage() {
                 <div className="card" style={{ textAlign: "center" }}>
                   <div className="title">{resultText}</div>
                   <div className="note">いまの戦闘力：{monster.battle_power}</div>
+                  {(() => {
+                    const total =
+                      typeof window !== "undefined"
+                        ? Number(
+                            localStorage.getItem(
+                              versusTotalKey(monster.child_id)
+                            ) || "0"
+                          )
+                        : 0;
+                    const g = total > 0 && total % 10 === 0 ? 10 : total % 10;
+                    return (
+                      <div style={{ marginTop: 10 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontWeight: 900,
+                            fontSize: 13,
+                            color: "#2b1b10",
+                            marginBottom: 4
+                          }}
+                        >
+                          <span>🌈 虹の種ゲージ</span>
+                          <span>{g} / 10</span>
+                        </div>
+                        <div
+                          style={{
+                            height: 14,
+                            borderRadius: 999,
+                            border: "2px solid #2b1b10",
+                            background: "#fff",
+                            overflow: "hidden"
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${(g / 10) * 100}%`,
+                              height: "100%",
+                              background:
+                                "linear-gradient(90deg,#ff3b3b,#ffb000,#39d353,#18a0fb,#a83dff)"
+                            }}
+                          />
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#7a6a55",
+                            marginTop: 4
+                          }}
+                        >
+                          {g >= 10
+                            ? "🌈 虹の種を ゲット！"
+                            : `あと ${10 - g} 回 オフライン対戦で 虹の種🌈`}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {gotRainbow && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontWeight: 900,
+                        color: "#a83dff",
+                        fontSize: 16
+                      }}
+                    >
+                      🌈 10回 たいせん 達成！虹の種を ゲット！
+                    </div>
+                  )}
                 </div>
               )}
 
