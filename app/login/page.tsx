@@ -64,6 +64,13 @@ export default function LoginPage() {
           はじめての方はこちら
         </button>
 
+        <button
+          className="button gray"
+          onClick={() => router.push("/switch")}
+        >
+          【スマホ共有】アカウント切り替え
+        </button>
+
         <div className="note">
           Supabase Authのメール＋パスワードでログインします。
         </div>
