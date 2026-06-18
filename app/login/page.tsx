@@ -10,6 +10,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function login() {
     if (!email || !password) {
@@ -28,6 +30,30 @@ export default function LoginPage() {
     }
 
     router.push("/home");
+  }
+
+  // パスワードを忘れたとき：メールアドレスに再設定リンクを送る
+  async function forgot() {
+    if (!email) {
+      setMsg("先に メールアドレスを 入力してください。");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    const redirectTo =
+      (typeof window !== "undefined" ? window.location.origin : "") +
+      "/reset-password";
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo
+    });
+    setBusy(false);
+    if (error) {
+      setMsg("メールを送信できませんでした：" + error.message);
+      return;
+    }
+    setMsg(
+      "パスワード再設定メールを送りました。メール内のリンクを開いて、新しいパスワードを決めてください。（届くまで数分かかることがあります。迷惑メールもご確認ください）"
+    );
   }
 
   return (
@@ -58,7 +84,35 @@ export default function LoginPage() {
         </button>
 
         <button
+          className="button gray"
+          style={{ marginTop: 8 }}
+          onClick={forgot}
+          disabled={busy}
+        >
+          {busy ? "送信中…" : "パスワードを忘れた方はこちら"}
+        </button>
+
+        {msg && (
+          <div
+            style={{
+              marginTop: 10,
+              background: "white",
+              border: "3px solid #2b1b10",
+              borderRadius: 14,
+              padding: 10,
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: "#2b1b10",
+              lineHeight: 1.7
+            }}
+          >
+            {msg}
+          </div>
+        )}
+
+        <button
           className="button orange"
+          style={{ marginTop: 14 }}
           onClick={() => router.push("/register-child")}
         >
           はじめての方はこちら
