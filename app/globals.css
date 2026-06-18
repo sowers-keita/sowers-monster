@@ -314,44 +314,114 @@ button:active {
     );
 }
 
+/* 夕方 */
+.monster-stage.time-evening {
+  background:
+    radial-gradient(
+      circle at 78% 34%,
+      #ffe4a0 0 6%,
+      #ffb24d 6% 10%,
+      rgba(255, 178, 77, 0) 10.5%
+    ),
+    linear-gradient(
+      #ffb98a 0 30%,
+      #ff9e6b 30% 46%,
+      #d98a73 46% 54%,
+      #9aa05f 54% 60%,
+      #7e9249 60% 100%
+    );
+}
+
+/* 夜 */
+.monster-stage.time-night {
+  background:
+    radial-gradient(
+      circle at 76% 24%,
+      #fff8e0 0 4%,
+      #efe7c2 4% 6%,
+      rgba(239, 231, 194, 0) 6.5%
+    ),
+    radial-gradient(circle at 22% 22%, #ffffff 0 1px, rgba(255, 255, 255, 0) 2px),
+    radial-gradient(circle at 40% 14%, #ffffff 0 1px, rgba(255, 255, 255, 0) 2px),
+    radial-gradient(circle at 58% 30%, #ffffff 0 1px, rgba(255, 255, 255, 0) 2px),
+    linear-gradient(
+      #18204a 0 30%,
+      #26306a 30% 50%,
+      #344070 50% 56%,
+      #2f5e3a 56% 62%,
+      #224a2c 62% 100%
+    );
+}
+.monster-stage.time-night .scene-grass {
+  background: repeating-linear-gradient(
+    90deg,
+    #2f6a3a 0 9px,
+    #2a6233 9px 18px
+  );
+  border-top-color: #245029;
+}
+.monster-stage.time-night .scene-mountain.left {
+  background: linear-gradient(150deg, #3f4a6b 0 55%, #2c3550 55% 100%);
+}
+.monster-stage.time-night .scene-mountain.mid {
+  background: linear-gradient(150deg, #384262 0 55%, #262f49 55% 100%);
+}
+.monster-stage.time-night .scene-mountain.right {
+  background: linear-gradient(150deg, #46507033 0 55%, #343d5c 55% 100%);
+  background: linear-gradient(150deg, #465070 0 55%, #343d5c 55% 100%);
+}
+.monster-stage.time-evening .scene-mountain.left {
+  background: linear-gradient(150deg, #c79a8e 0 55%, #9c6f6a 55% 100%);
+}
+.monster-stage.time-evening .scene-mountain.mid {
+  background: linear-gradient(150deg, #b98a82 0 55%, #8a5f5e 55% 100%);
+}
+.monster-stage.time-evening .scene-mountain.right {
+  background: linear-gradient(150deg, #cda197 0 55%, #a4756f 55% 100%);
+}
+
 .scene-cloud {
   position: absolute;
-  width: 64px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.9);
+  width: 46px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 999px;
+  box-shadow:
+    16px 3px 0 -2px rgba(255, 255, 255, 0.95),
+    -16px 3px 0 -2px rgba(255, 255, 255, 0.95),
+    2px -6px 0 -1px rgba(255, 255, 255, 0.95);
   z-index: 1;
 }
 
+/* まるみのある丘（三角ではなくドーム型＋陰影） */
 .scene-mountain {
   position: absolute;
-  width: 0;
-  height: 0;
   z-index: 1;
+  border-radius: 50% 50% 0 0;
 }
 
 .scene-mountain.left {
-  left: 4%;
-  bottom: 40%;
-  border-left: 52px solid transparent;
-  border-right: 52px solid transparent;
-  border-bottom: 56px solid #93a7bf;
+  left: -10%;
+  bottom: 27%;
+  width: 140px;
+  height: 84px;
+  background: linear-gradient(150deg, #aebfd6 0 55%, #8198b6 55% 100%);
 }
 
 .scene-mountain.mid {
-  left: 36%;
-  bottom: 41%;
-  border-left: 64px solid transparent;
-  border-right: 64px solid transparent;
-  border-bottom: 72px solid #8295ae;
+  left: 24%;
+  bottom: 28%;
+  width: 190px;
+  height: 116px;
+  background: linear-gradient(150deg, #9cb0cd 0 55%, #6f88a8 55% 100%);
 }
 
 .scene-mountain.right {
-  right: 2%;
-  bottom: 40%;
-  border-left: 48px solid transparent;
-  border-right: 48px solid transparent;
-  border-bottom: 50px solid #9cafc6;
+  right: -12%;
+  bottom: 27%;
+  width: 150px;
+  height: 92px;
+  background: linear-gradient(150deg, #b6c6db 0 55%, #8ca3bf 55% 100%);
 }
 
 .scene-grass {
