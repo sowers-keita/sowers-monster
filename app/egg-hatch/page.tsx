@@ -68,6 +68,13 @@ function EggHatchInner() {
     const monsterData = monsterByEgg[egg];
     const finalName = name.trim() || monsterData.name;
 
+    // 既存のアクティブなモンスターは必ず退役させ、アクティブは常に1体だけにする
+    await supabase
+      .from("monsters")
+      .update({ is_active: false })
+      .eq("child_id", child.id)
+      .eq("is_active", true);
+
     const { error } = await supabase.from("monsters").insert({
       child_id: child.id,
       name: finalName,
