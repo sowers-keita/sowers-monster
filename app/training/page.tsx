@@ -1126,7 +1126,9 @@ function ThreadTraining({
   });
 
   const BIRD_X = 18;
-  const HALF_GAP = 27;
+  // すき間の半分。赤の壁（20枚）以降はほんの少しだけ狭くする。
+  // 30枚以降も同じ広さを保ち、ずっと続けられるようにする。
+  const halfGapFor = (passed: number) => (passed >= 20 ? 24 : 27);
   const WALL_HALF = 7;
 
   useEffect(() => {
@@ -1181,7 +1183,8 @@ function ThreadTraining({
         }
 
         if (w.x < BIRD_X + WALL_HALF && w.x > BIRD_X - WALL_HALF) {
-          if (s.y < w.gap - HALF_GAP || s.y > w.gap + HALF_GAP) {
+          const hg = halfGapFor(s.passed);
+          if (s.y < w.gap - hg || s.y > w.gap + hg) {
             hit = true;
           }
         }
@@ -1232,6 +1235,7 @@ function ThreadTraining({
   }
 
   const s = state.current;
+  const curHalfGap = halfGapFor(s.passed);
   // 10枚から黄、20枚から赤、30枚から虹色（それまでは青）
   const wallColor =
     s.passed >= 30
@@ -1267,7 +1271,7 @@ function ThreadTraining({
                 top: 0,
                 transform: "translateX(-50%)",
                 width: `${WALL_HALF * 2}%`,
-                height: `${Math.max(0, w.gap - HALF_GAP)}%`,
+                height: `${Math.max(0, w.gap - curHalfGap)}%`,
                 background: wallColor,
                 border: "3px solid #2b1b10"
               }}
@@ -1276,10 +1280,10 @@ function ThreadTraining({
               style={{
                 position: "absolute",
                 left: `${w.x}%`,
-                top: `${w.gap + HALF_GAP}%`,
+                top: `${w.gap + curHalfGap}%`,
                 transform: "translateX(-50%)",
                 width: `${WALL_HALF * 2}%`,
-                height: `${Math.max(0, 100 - (w.gap + HALF_GAP))}%`,
+                height: `${Math.max(0, 100 - (w.gap + curHalfGap))}%`,
                 background: wallColor,
                 border: "3px solid #2b1b10"
               }}
