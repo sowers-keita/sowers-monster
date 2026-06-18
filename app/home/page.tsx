@@ -544,7 +544,12 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
             className="card"
             style={{ padding: 12, textAlign: "center", background: "#fff7e9" }}
           >
-            <div className="monster-stage">
+            <div
+              className={`monster-stage time-${(() => {
+                const h = new Date().getHours();
+                return h < 5 || h >= 19 ? "night" : h >= 16 ? "evening" : "day";
+              })()}`}
+            >
               <div className="scene-cloud" style={{ top: 14, left: 28 }} />
               <div className="scene-cloud" style={{ top: 26, right: 30, width: 50 }} />
               <div className="scene-mountain left" />
