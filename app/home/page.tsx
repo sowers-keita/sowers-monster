@@ -300,6 +300,7 @@ export default function HomePage() {
       .select("*")
       .eq("child_id", child.id)
       .eq("is_active", true)
+      .order("created_at", { ascending: false })
       .limit(1)
       .single();
 
