@@ -33,7 +33,7 @@ const trainings: TrainingConfig[] = [
     stat: "power",
     title: "連打トレーニング",
     howto: "10秒で できるだけ たくさん タップ！",
-    goals: ["90回で パワー +5", "80回で 種を ゲット🌱"],
+    goals: ["90回で パワー +5"],
     targetLabel: "パワー"
   },
   {
@@ -41,7 +41,7 @@ const trainings: TrainingConfig[] = [
     stat: "stamina",
     title: "ランニングトレーニング",
     howto: "タップで 小ジャンプ／長おしで 大ジャンプ。あなに おちないでね。",
-    goals: ["100mで スタミナ +5", "100mで 種も ゲット🌱"],
+    goals: ["100mで スタミナ +5"],
     targetLabel: "スタミナ"
   },
   {
@@ -50,7 +50,7 @@ const trainings: TrainingConfig[] = [
     title: "ストップトレーニング",
     howto: "うごくバーを みどりゾーンで ストップ！",
     goals: [
-      "10れんぞくで スピード +5 と 種🌱",
+      "10れんぞくで スピード +5",
       "れんぞくが つづくかぎり 時間を こえても つづく！"
     ],
     targetLabel: "スピード"
@@ -60,7 +60,7 @@ const trainings: TrainingConfig[] = [
     stat: "technique",
     title: "糸通しトレーニング",
     howto: "長おしで 上、はなすと 下。すき間を とおろう。1回でも ぶつかったら おしまい。",
-    goals: ["20枚で テクニック +5", "30枚で 種を ゲット🌱"],
+    goals: ["20枚で テクニック +5"],
     targetLabel: "テクニック"
   }
 ];
@@ -139,12 +139,303 @@ function trainDoneKey(childId: string, type: string) {
   return `swm_train_${childId}_${type}_${today}`;
 }
 
+// ④ ストップウォッチ：5秒までは見える／5秒〜は隠れる。10.0000秒ちょうどで止めると満点。種なし。
+function StopwatchTraining({ onBack }: { onBack: () => void }) {
+  const TARGET = 10;
+  const SHOW_UNTIL = 5;
+  const [running, setRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [result, setResult] = useState<number | null>(null);
+  const [best, setBest] = useState<number | null>(null);
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  function tick() {
+    if (startRef.current !== null) {
+      setElapsed((performance.now() - startRef.current) / 1000);
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }
+  function start() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setResult(null);
+    setElapsed(0);
+    setRunning(true);
+    startRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+  }
+  function stop() {
+    if (!running || startRef.current === null) return;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const t = (performance.now() - startRef.current) / 1000;
+    setElapsed(t);
+    setResult(t);
+    setRunning(false);
+    const d = Math.abs(t - TARGET);
+    setBest((b) => (b === null || d < b ? d : b));
+  }
+
+  const hidden = running && elapsed >= SHOW_UNTIL;
+  const big =
+    result !== null
+      ? result.toFixed(4)
+      : !running
+      ? "0.0000"
+      : hidden
+      ? "？.？？？？"
+      : elapsed.toFixed(4);
+  const diff = result !== null ? Math.abs(result - TARGET) : null;
+
+  return (
+    <div className="card" style={{ textAlign: "center" }}>
+      <div className="title">10.0000秒 ちょうどで ストップ！</div>
+      <div className="note">
+        スタートを おすと カウント開始。5秒までは 見えるけど、5秒を すぎると
+        タイマーが かくれるよ。10.0000秒ぴったりを ねらおう！
+      </div>
+      <div
+        style={{
+          margin: "18px 0",
+          fontSize: 44,
+          fontWeight: 900,
+          color: hidden ? "#c9b48f" : "#2b1b10",
+          fontVariantNumeric: "tabular-nums",
+          letterSpacing: 1
+        }}
+      >
+        {big}
+        <span style={{ fontSize: 18, marginLeft: 4 }}>秒</span>
+      </div>
+      {!running && result === null && (
+        <button className="button green" onClick={start}>
+          スタート
+        </button>
+      )}
+      {running && (
+        <button className="button red" onClick={stop}>
+          ストップ！
+        </button>
+      )}
+      {result !== null && diff !== null && (
+        <>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 900,
+              color: diff < 0.05 ? "#1f9d57" : "#2b1b10",
+              marginBottom: 10
+            }}
+          >
+            {diff === 0
+              ? "パーフェクト！ 10.0000秒 ちょうど！"
+              : `10.0000秒との さ：${diff.toFixed(4)} 秒`}
+          </div>
+          <button className="button green" onClick={start}>
+            もう一度
+          </button>
+        </>
+      )}
+      {best !== null && (
+        <div style={{ marginTop: 12, fontSize: 13, color: "#7a6a55" }}>
+          ベスト（10秒との さ）：{best.toFixed(4)} 秒
+        </div>
+      )}
+      <button className="button gray" style={{ marginTop: 12 }} onClick={onBack}>
+        ← もどる
+      </button>
+    </div>
+  );
+}
+
+// ⑤ 数字タッチ（5×4）：スタート後 1→20 を順にタッチ。毎回ランダム。タイムを競う。種なし。
+function NumberTouchTraining({ onBack }: { onBack: () => void }) {
+  const NN = 20;
+  const makeOrder = () => {
+    const a = Array.from({ length: NN }, (_, i) => i + 1);
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  const [order, setOrder] = useState<number[]>(makeOrder);
+  const [next, setNext] = useState(1);
+  const [running, setRunning] = useState(false);
+  const [done, setDone] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [best, setBest] = useState<number | null>(null);
+  const [wrong, setWrong] = useState(0);
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  function tick() {
+    if (startRef.current !== null) {
+      setElapsed((performance.now() - startRef.current) / 1000);
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }
+  function start() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setOrder(makeOrder());
+    setNext(1);
+    setDone(false);
+    setWrong(0);
+    setElapsed(0);
+    setRunning(true);
+    startRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(tick);
+  }
+  function press(n: number) {
+    if (!running || done) return;
+    if (n === next) {
+      if (n >= NN) {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        const t = (performance.now() - (startRef.current || 0)) / 1000;
+        setElapsed(t);
+        setRunning(false);
+        setDone(true);
+        setNext(NN + 1);
+        setBest((b) => (b === null || t < b ? t : b));
+      } else {
+        setNext(n + 1);
+      }
+    } else {
+      setWrong((w) => w + 1);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="title" style={{ textAlign: "center" }}>
+        1から 20まで 順番にタッチ！
+      </div>
+      <div className="note" style={{ textAlign: "center" }}>
+        スタートを おしてから、1→20を できるだけ はやく タッチ。毎回 ならびは
+        バラバラだよ。
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          margin: "10px 4px 6px"
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 12, color: "#7a6a55" }}>つぎは</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: "#2b1b10" }}>
+            {done ? "✓" : running ? next : "-"}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 12, color: "#7a6a55" }}>タイム</div>
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 900,
+              color: "#2b1b10",
+              fontVariantNumeric: "tabular-nums"
+            }}
+          >
+            {elapsed.toFixed(2)}
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, 1fr)",
+          gap: 6,
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "manipulation"
+        }}
+      >
+        {order.map((n, i) => {
+          const cleared = running && n < next;
+          return (
+            <button
+              key={i}
+              draggable={false}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => press(n)}
+              style={{
+                aspectRatio: "1 / 1",
+                border: "3px solid #2b1b10",
+                borderRadius: 14,
+                background: cleared ? "#9fe3b0" : "#fff7e9",
+                color: "#2b1b10",
+                fontSize: 22,
+                fontWeight: 900,
+                fontVariantNumeric: "tabular-nums",
+                opacity: running || done ? 1 : 0.5,
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                touchAction: "manipulation",
+                cursor: "pointer"
+              }}
+            >
+              <span style={{ pointerEvents: "none" }}>{n}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          textAlign: "center",
+          marginTop: 12,
+          minHeight: 22,
+          fontWeight: 900,
+          color: done ? "#1f9d57" : "#7a6a55"
+        }}
+      >
+        {done
+          ? `クリア！ タイム ${elapsed.toFixed(2)} 秒` + (wrong ? `（ミス ${wrong}）` : "")
+          : running
+          ? "1から じゅんに タッチ！"
+          : "スタートを おしてね"}
+      </div>
+      <button className="button green" style={{ marginTop: 8 }} onClick={start}>
+        {done || !running ? "スタート" : "やりなおす"}
+      </button>
+      {best !== null && (
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: 10,
+            fontSize: 13,
+            color: "#7a6a55"
+          }}
+        >
+          ベスト：{best.toFixed(2)} 秒
+        </div>
+      )}
+      <button className="button gray" style={{ marginTop: 12 }} onClick={onBack}>
+        ← もどる
+      </button>
+    </div>
+  );
+}
+
 export default function TrainingPage() {
   const router = useRouter();
 
   const [monster, setMonster] = useState<ActiveMonster | null>(null);
   const [selected, setSelected] = useState<TrainingType>("friend");
   const [mode, setMode] = useState<"menu" | "playing" | "clear">("menu");
+  const [extra, setExtra] = useState<"stopwatch" | "number" | null>(null);
   const [earned, setEarned] = useState(0);
   const [gotSeed, setGotSeed] = useState(false);
   const [resultText, setResultText] = useState("");
@@ -247,18 +538,9 @@ export default function TrainingPage() {
       setMonster({ ...monster, ...update } as ActiveMonster);
     }
 
-    // 種の報酬（条件達成＆その日まだ もらっていなければ）
-    let seed = false;
-    if (seedEarned && !doneToday[selected]) {
-      try {
-        await addSeedToChild(monster.child_id, config.stat, 1);
-        localStorage.setItem(trainDoneKey(monster.child_id, selected), "1");
-        setDoneToday((prev) => ({ ...prev, [selected]: true }));
-        seed = true;
-      } catch (e) {
-        alert(e instanceof Error ? e.message : "種の付与に失敗しました");
-      }
-    }
+    // 種の配布は停止しました（種は実際の練習レビューの「あいことば」からのみ）。
+    const seed = false;
+    void seedEarned;
 
     setEarned(statPoints);
     setGotSeed(seed);
@@ -287,7 +569,7 @@ export default function TrainingPage() {
         <div className="header">トレーニング</div>
 
         <div className="content" style={{ paddingBottom: 92 }}>
-          {mode === "menu" && (
+          {mode === "menu" && extra === null && (
             <>
               <div className="card" style={{ textAlign: "center" }}>
                 <MonsterIcon
@@ -301,8 +583,7 @@ export default function TrainingPage() {
                   どのトレーニングをする？
                 </div>
                 <div className="note">
-                  がんばるほど のうりょくUP！じょうずに クリアすると「種」も
-                  1つ もらえるよ（1日 それぞれ 1回）。
+                  がんばるほど のうりょくUP！自己ベストを めざそう。
                 </div>
               </div>
 
@@ -316,20 +597,30 @@ export default function TrainingPage() {
                   }}
                   style={{
                     display: "flex",
-                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
                     lineHeight: 1.2
                   }}
                 >
                   <span>{item.title}</span>
-                  {doneToday[item.type] && (
-                    <span style={{ fontSize: 12, fontWeight: 700, marginTop: 3 }}>
-                      きょうの種は ゲット済み
-                    </span>
-                  )}
                 </button>
               ))}
+
+              <button
+                className="button orange"
+                onClick={() => setExtra("stopwatch")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1.2 }}
+              >
+                <span>ストップウォッチ</span>
+              </button>
+
+              <button
+                className="button orange"
+                onClick={() => setExtra("number")}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1.2 }}
+              >
+                <span>数字タッチ（5×4）</span>
+              </button>
             </>
           )}
 
@@ -347,6 +638,14 @@ export default function TrainingPage() {
 
           {mode === "playing" && selected === "thread" && (
             <ThreadTraining config={config} onClear={onClear} />
+          )}
+
+          {extra === "stopwatch" && (
+            <StopwatchTraining onBack={() => setExtra(null)} />
+          )}
+
+          {extra === "number" && (
+            <NumberTouchTraining onBack={() => setExtra(null)} />
           )}
 
           {mode === "clear" && (
@@ -714,7 +1013,7 @@ function ThreadTraining({
   });
 
   const BIRD_X = 18;
-  const HALF_GAP = 17;
+  const HALF_GAP = 20;
   const WALL_HALF = 7;
 
   useEffect(() => {
@@ -820,12 +1119,14 @@ function ThreadTraining({
   }
 
   const s = state.current;
-  // 20枚から赤、30枚から虹色
+  // 10枚から黄、20枚から赤、30枚から虹色（それまでは青）
   const wallColor =
     s.passed >= 30
       ? "linear-gradient(180deg,#ff3b3b,#ffb000,#39d353,#18a0fb,#a83dff)"
       : s.passed >= 20
       ? "#ff4b35"
+      : s.passed >= 10
+      ? "#f5c518"
       : "#2f8ee5";
 
   return (
