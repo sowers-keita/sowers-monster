@@ -273,17 +273,15 @@ export default function BattlePage() {
     setEnemyHp(chosen.hp);
     setLog(`${chosen.classroom}の ${chosen.name}さん とマッチング！`);
 
-    // 当日のバトル回数を数える（今のモンスターになってから＝リセット後の分だけ）
+    // 当日のバトル回数を数える（子ども単位・今日0時起点。モンスター作り直しで回避できないようにする）
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    const created = new Date(current.created_at);
-    const since = created > start ? created : start;
 
     const { count } = await supabase
       .from("battles")
       .select("*", { count: "exact", head: true })
       .eq("child_id", current.child_id)
-      .gte("created_at", since.toISOString());
+      .gte("created_at", start.toISOString());
 
     setBattlesToday(count || 0);
   }
