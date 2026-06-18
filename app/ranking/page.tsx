@@ -39,7 +39,14 @@ type RankingRow = {
 
 type Mode = "power" | GameType;
 
-const GAME_ORDER: GameType[] = ["friend", "running", "stop", "thread"];
+const GAME_ORDER: GameType[] = [
+  "friend",
+  "running",
+  "stop",
+  "thread",
+  "stopwatch",
+  "number"
+];
 
 export default function RankingPage() {
   const router = useRouter();
