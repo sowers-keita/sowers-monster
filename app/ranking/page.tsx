@@ -125,10 +125,12 @@ export default function RankingPage() {
       seenChild.add(row.child_id);
       return true;
     });
-    setRows(rankingRows);
-
+    // 自分の順位は10位圏外でも正しく出すため、全体(重複排除後)から算出
     const index = rankingRows.findIndex((row) => row.id === myMonster.id);
     setMyRank(index >= 0 ? index + 1 : null);
+
+    // 表示は戦闘力トップ10まで
+    setRows(rankingRows.slice(0, 10));
     setLoading(false);
   }
 
@@ -222,7 +224,7 @@ export default function RankingPage() {
                   marginBottom: 10
                 }}
               >
-                TOP 30
+                TOP 10
               </div>
 
               <div style={{ display: "grid", gap: 10 }}>
