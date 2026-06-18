@@ -539,7 +539,23 @@ export default function VersusPage() {
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
                   gap: 12,
-                  textAlign: "center"
+                  textAlign: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  imageRendering: "pixelated",
+                  background: [
+                    "radial-gradient(140% 78% at 50% 92%, rgba(255,255,255,0.55) 0 26%, rgba(255,255,255,0) 60%)",
+                    "linear-gradient(180deg, transparent 0 50%, #e6ebf2 50% 53%, #ccd3de 53% 73%, #b4bdcb 73% 100%)",
+                    "repeating-linear-gradient(90deg,#9aa6c0 0 30px,#abb5cc 30px 34px,#8d9ab6 34px 60px)",
+                    (() => {
+                      const h = new Date().getHours();
+                      return h < 5 || h >= 19
+                        ? "linear-gradient(180deg,#16204a 0 24%,#2a356a 24% 38%,transparent 38%)"
+                        : h >= 16
+                        ? "linear-gradient(180deg,#ff8a5c 0 22%,#ffb98a 22% 38%,transparent 38%)"
+                        : "linear-gradient(180deg,#9fd0ff 0 22%,#d6efff 22% 38%,transparent 38%)";
+                    })()
+                  ].join(",")
                 }}
               >
                 <div>
@@ -552,7 +568,11 @@ export default function VersusPage() {
                         ? "b-jump"
                         : ""
                     }
-                    style={{ display: "inline-block" }}
+                    style={{
+                      display: "inline-block",
+                      background:
+                        "radial-gradient(46% 12% at 50% 97%, rgba(0,0,0,0.26), rgba(0,0,0,0) 72%)"
+                    }}
                   >
                     <MonsterIcon
                       color={monster.egg_color}
@@ -580,7 +600,11 @@ export default function VersusPage() {
                         ? "b-jump"
                         : ""
                     }
-                    style={{ display: "inline-block" }}
+                    style={{
+                      display: "inline-block",
+                      background:
+                        "radial-gradient(46% 12% at 50% 97%, rgba(0,0,0,0.26), rgba(0,0,0,0) 72%)"
+                    }}
                   >
                     <MonsterIcon
                       color={opp.color}
