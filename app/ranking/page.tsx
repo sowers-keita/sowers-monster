@@ -157,7 +157,7 @@ export default function RankingPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
+              gridTemplateColumns: "repeat(4, 1fr)",
               gap: 6,
               marginBottom: 12
             }}
