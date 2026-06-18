@@ -304,49 +304,13 @@ export type WeeklyRewardResult = {
   seed: SeedType;
 };
 
-// 先週（前の月〜日）の各ゲーム上位3人なら、種を1回だけ自動で受け取る
+// トレーニングからの種の配布は停止しました。
+// 種は実際の練習レビューで発行される「あいことば」からのみ付与されます。
+// （ランキング自体は今までどおり集計・表示されます）
 export async function claimWeeklyGameRewards(
-  childId: string
+  _childId: string
 ): Promise<WeeklyRewardResult[]> {
-  if (!childId) {
-    return [];
-  }
-
-  const lastWeek = mondayStart();
-  lastWeek.setDate(lastWeek.getDate() - 7);
-  const ws = ymdLocal(lastWeek);
-
-  const games: GameType[] = ["friend", "running", "stop", "thread"];
-  const results: WeeklyRewardResult[] = [];
-
-  for (const g of games) {
-    const top = await getGameRanking(g, ws, 3);
-    const idx = top.findIndex((r) => r.child_id === childId);
-
-    if (idx < 0) {
-      continue;
-    }
-
-    // 受け取り記録（1回だけ）。すでに受け取り済みなら unique 制約でエラー。
-    const { error } = await supabase.from("game_reward_logs").insert({
-      child_id: childId,
-      game_type: g,
-      week_start: ws
-    });
-
-    if (error) {
-      continue;
-    }
-
-    try {
-      await addSeedToChild(childId, gameSeed[g], 1);
-      results.push({ gameType: g, rank: idx + 1, seed: gameSeed[g] });
-    } catch {
-      // 付与に失敗しても続行
-    }
-  }
-
-  return results;
+  return [];
 }
 
 export function calcEvolutionReady(monster: ActiveMonster) {
