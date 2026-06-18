@@ -191,28 +191,40 @@ export function getSeedMaxIncrease(seedType: SeedType) {
 }
 
 // ====== ミニゲーム 週間ランキング ======
-export type GameType = "friend" | "running" | "stop" | "thread";
+export type GameType =
+  | "friend"
+  | "running"
+  | "stop"
+  | "thread"
+  | "stopwatch"
+  | "number";
 
 export const gameLabels: Record<GameType, string> = {
   friend: "連打",
   running: "ランニング",
   stop: "ストップ",
-  thread: "糸通し"
+  thread: "糸通し",
+  stopwatch: "ストップウォッチ",
+  number: "数字タッチ"
 };
 
-// 各ゲームの1位〜3位がもらえる「成長の種」
+// （種の配布は停止中。型のために残置）
 export const gameSeed: Record<GameType, SeedType> = {
   friend: "power",
   running: "stamina",
   stop: "speed",
-  thread: "technique"
+  thread: "technique",
+  stopwatch: "power",
+  number: "speed"
 };
 
 export const gameScoreUnit: Record<GameType, string> = {
   friend: "回",
   running: "m",
   stop: "連続",
-  thread: "枚"
+  thread: "枚",
+  stopwatch: "点",
+  number: "点"
 };
 
 // 月曜はじまりの週の開始日（ローカル日付）
