@@ -596,7 +596,16 @@ export default function BattlePage() {
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: 12,
-              textAlign: "center"
+              textAlign: "center",
+              position: "relative",
+              overflow: "hidden",
+              imageRendering: "pixelated",
+              background: [
+                "linear-gradient(180deg,transparent 0 72%,#6e7787 72% 75%,#59616f 75% 100%)",
+                "linear-gradient(180deg,#9fd0ff 0 40%,#cfe9ff 40% 41%,transparent 41%)",
+                "repeating-linear-gradient(90deg,transparent 0 8px,rgba(255,234,150,0.8) 8px 14px,transparent 14px 40px)",
+                "repeating-linear-gradient(90deg,#3f4a63 0 40px,#4a5773 40px 44px,#36405a 44px 80px)"
+              ].join(",")
             }}
           >
             <div>
