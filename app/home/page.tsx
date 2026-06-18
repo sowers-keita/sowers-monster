@@ -508,15 +508,13 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
             gap: 8
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <MonsterIcon
-              color={monster.egg_color}
-              size={30}
-              stage={monster.stage}
-              speed={monster.speed}
-              technique={monster.technique}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/tane_logo.png"
+              alt="sowers たねもん"
+              style={{ height: 36, display: "block" }}
             />
-            <span style={{ fontSize: 19, fontWeight: 900 }}>Sowers Monster</span>
           </div>
           <div
             onClick={() => router.push("/inventory")}
