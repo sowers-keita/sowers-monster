@@ -14,6 +14,7 @@ import {
   seedLabels
 } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
+import { isSaved, updateAccountTokens } from "@/lib/accounts";
 import { EggColor } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
@@ -270,6 +271,20 @@ export default function HomePage() {
     }
 
     setChildName(child.name);
+    // クイック切り替え登録済みなら、最新トークンを保存し直す（切り替え失敗を防ぐ）
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      if (sess.session && isSaved(userId)) {
+        updateAccountTokens(
+          userId,
+          sess.session.access_token,
+          sess.session.refresh_token,
+          child.name
+        );
+      }
+    } catch {
+      // 無視
+    }
 
     try {
       const awarded = await claimWeeklyGameRewards(child.id);
@@ -988,6 +1003,14 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
             }}
           >
             ❓ あそびかた を みる
+          </button>
+
+          <button
+            className="button gray"
+            style={{ marginTop: 8 }}
+            onClick={() => router.push("/switch")}
+          >
+            👥 アカウント切り替え
           </button>
 
           <button
