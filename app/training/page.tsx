@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import MonsterIcon from "@/components/MonsterIcon";
 import {
   ActiveMonster,
+  GameType,
   addSeedToChild,
   getGameRanking,
   getMyActiveMonster,
@@ -140,13 +141,26 @@ function trainDoneKey(childId: string, type: string) {
 }
 
 // ④ ストップウォッチ：5秒までは見える／5秒〜は隠れる。10.0000秒ちょうどで止めると満点。種なし。
-function StopwatchTraining({ onBack }: { onBack: () => void }) {
+function StopwatchTraining({
+  onBack,
+  finish
+}: {
+  onBack: () => void;
+  finish: (
+    g: GameType,
+    stats: StatType[],
+    pts: number,
+    score: number
+  ) => Promise<string>;
+}) {
   const TARGET = 10;
   const SHOW_UNTIL = 5;
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<number | null>(null);
   const [best, setBest] = useState<number | null>(null);
+  const [rank, setRank] = useState("");
+  const [statUp, setStatUp] = useState(0);
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -179,6 +193,10 @@ function StopwatchTraining({ onBack }: { onBack: () => void }) {
     setRunning(false);
     const d = Math.abs(t - TARGET);
     setBest((b) => (b === null || d < b ? d : b));
+    const pts = d <= 0.05 ? 3 : d <= 0.3 ? 2 : 1;
+    const score = Math.max(1, Math.round(10000 - d * 1000));
+    setStatUp(pts);
+    finish("stopwatch", ["power", "stamina"], pts, score).then((r) => setRank(r));
   }
 
   const hidden = running && elapsed >= SHOW_UNTIL;
@@ -236,6 +254,21 @@ function StopwatchTraining({ onBack }: { onBack: () => void }) {
               ? "パーフェクト！ 10.0000秒 ちょうど！"
               : `10.0000秒との さ：${diff.toFixed(4)} 秒`}
           </div>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 900,
+              color: "#1f9d57",
+              marginBottom: 4
+            }}
+          >
+            のうりょく ＋{statUp}（パワー・スタミナ）
+          </div>
+          {rank && (
+            <div style={{ fontSize: 13, color: "#7a6a55", marginBottom: 10 }}>
+              {rank}
+            </div>
+          )}
           <button className="button green" onClick={start}>
             もう一度
           </button>
@@ -254,7 +287,18 @@ function StopwatchTraining({ onBack }: { onBack: () => void }) {
 }
 
 // ⑤ 数字タッチ（5×4）：スタート後 1→20 を順にタッチ。毎回ランダム。タイムを競う。種なし。
-function NumberTouchTraining({ onBack }: { onBack: () => void }) {
+function NumberTouchTraining({
+  onBack,
+  finish
+}: {
+  onBack: () => void;
+  finish: (
+    g: GameType,
+    stats: StatType[],
+    pts: number,
+    score: number
+  ) => Promise<string>;
+}) {
   const NN = 20;
   const makeOrder = () => {
     const a = Array.from({ length: NN }, (_, i) => i + 1);
@@ -271,6 +315,8 @@ function NumberTouchTraining({ onBack }: { onBack: () => void }) {
   const [elapsed, setElapsed] = useState(0);
   const [best, setBest] = useState<number | null>(null);
   const [wrong, setWrong] = useState(0);
+  const [rank, setRank] = useState("");
+  const [statUp, setStatUp] = useState(0);
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -308,6 +354,12 @@ function NumberTouchTraining({ onBack }: { onBack: () => void }) {
         setDone(true);
         setNext(NN + 1);
         setBest((b) => (b === null || t < b ? t : b));
+        const pts = t <= 12 ? 3 : t <= 18 ? 2 : 1;
+        const score = Math.max(1, Math.round(20000 / t));
+        setStatUp(pts);
+        finish("number", ["speed", "technique"], pts, score).then((r) =>
+          setRank(r)
+        );
       } else {
         setNext(n + 1);
       }
@@ -407,6 +459,18 @@ function NumberTouchTraining({ onBack }: { onBack: () => void }) {
           ? "1から じゅんに タッチ！"
           : "スタートを おしてね"}
       </div>
+      {done && (
+        <div style={{ textAlign: "center", marginTop: 4 }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: "#1f9d57" }}>
+            のうりょく ＋{statUp}（スピード・テクニック）
+          </div>
+          {rank && (
+            <div style={{ fontSize: 13, color: "#7a6a55", marginTop: 2 }}>
+              {rank}
+            </div>
+          )}
+        </div>
+      )}
       <button className="button green" style={{ marginTop: 8 }} onClick={start}>
         {done || !running ? "スタート" : "やりなおす"}
       </button>
@@ -548,6 +612,55 @@ export default function TrainingPage() {
     setMode("clear");
   }
 
+  // 追加トレーニング（ストップウォッチ・数字タッチ）の共通仕上げ：
+  // ランキング保存＋順位算出、能力（複数）を上げる。種は配布しない。
+  async function finishExtra(
+    gameType: GameType,
+    stats: StatType[],
+    statPoints: number,
+    score: number
+  ): Promise<string> {
+    if (!monster) return "";
+    let rank = "";
+    if (score > 0) {
+      try {
+        await saveGameScore(monster.child_id, gameType, score);
+        const ws = ymdLocal(mondayStart());
+        const ranking = await getGameRanking(gameType, ws, 500);
+        const idx = ranking.findIndex((r) => r.child_id === monster.child_id);
+        if (idx >= 0)
+          rank = `今週のランキング ${idx + 1}位 / ${ranking.length}人中`;
+      } catch {
+        // 続行
+      }
+    }
+    if (statPoints > 0) {
+      const update: Partial<ActiveMonster> = {};
+      for (const st of stats) {
+        if (st === "power")
+          update.power = Math.min(monster.power + statPoints, monster.power_max);
+        if (st === "stamina")
+          update.stamina = Math.min(
+            monster.stamina + statPoints,
+            monster.stamina_max
+          );
+        if (st === "speed")
+          update.speed = Math.min(monster.speed + statPoints, monster.speed_max);
+        if (st === "technique")
+          update.technique = Math.min(
+            monster.technique + statPoints,
+            monster.technique_max
+          );
+      }
+      const { error } = await supabase
+        .from("monsters")
+        .update(update)
+        .eq("id", monster.id);
+      if (!error) setMonster({ ...monster, ...update } as ActiveMonster);
+    }
+    return rank;
+  }
+
   if (!monster) {
     return (
       <main className="page">
@@ -641,11 +754,11 @@ export default function TrainingPage() {
           )}
 
           {extra === "stopwatch" && (
-            <StopwatchTraining onBack={() => setExtra(null)} />
+            <StopwatchTraining onBack={() => setExtra(null)} finish={finishExtra} />
           )}
 
           {extra === "number" && (
-            <NumberTouchTraining onBack={() => setExtra(null)} />
+            <NumberTouchTraining onBack={() => setExtra(null)} finish={finishExtra} />
           )}
 
           {mode === "clear" && (
