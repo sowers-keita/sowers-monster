@@ -989,6 +989,17 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
           >
             ❓ あそびかた を みる
           </button>
+
+          <button
+            className="button gray"
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push("/login");
+            }}
+          >
+            ↩ ログアウト
+          </button>
         </div>
       </div>
 
