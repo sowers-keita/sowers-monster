@@ -601,17 +601,17 @@ export default function BattlePage() {
               overflow: "hidden",
               imageRendering: "pixelated",
               background: [
-                "linear-gradient(180deg,transparent 0 72%,#6e7787 72% 75%,#59616f 75% 100%)",
+                "radial-gradient(140% 78% at 50% 92%, rgba(255,255,255,0.55) 0 26%, rgba(255,255,255,0) 60%)",
+                "linear-gradient(180deg, transparent 0 50%, #e6ebf2 50% 53%, #ccd3de 53% 73%, #b4bdcb 73% 100%)",
+                "repeating-linear-gradient(90deg,#9aa6c0 0 30px,#abb5cc 30px 34px,#8d9ab6 34px 60px)",
                 (() => {
                   const h = new Date().getHours();
                   return h < 5 || h >= 19
-                    ? "linear-gradient(180deg,#16204a 0 40%,#2a356a 40% 41%,transparent 41%)"
+                    ? "linear-gradient(180deg,#16204a 0 24%,#2a356a 24% 38%,transparent 38%)"
                     : h >= 16
-                    ? "linear-gradient(180deg,#ff9e6b 0 40%,#ffc79a 40% 41%,transparent 41%)"
-                    : "linear-gradient(180deg,#9fd0ff 0 40%,#cfe9ff 40% 41%,transparent 41%)";
-                })(),
-                "repeating-linear-gradient(90deg,transparent 0 8px,rgba(255,234,150,0.8) 8px 14px,transparent 14px 40px)",
-                "repeating-linear-gradient(90deg,#3f4a63 0 40px,#4a5773 40px 44px,#36405a 44px 80px)"
+                    ? "linear-gradient(180deg,#ff8a5c 0 22%,#ffb98a 22% 38%,transparent 38%)"
+                    : "linear-gradient(180deg,#9fd0ff 0 22%,#d6efff 22% 38%,transparent 38%)";
+                })()
               ].join(",")
             }}
           >
@@ -629,7 +629,9 @@ export default function BattlePage() {
                   display: "flex",
                   alignItems: "flex-end",
                   justifyContent: "center",
-                  height: 130
+                  height: 130,
+                  background:
+                    "radial-gradient(42% 12% at 50% 97%, rgba(0,0,0,0.28), rgba(0,0,0,0) 72%)"
                 }}
               >
                 <MonsterIcon
@@ -662,7 +664,9 @@ export default function BattlePage() {
                   display: "flex",
                   alignItems: "flex-end",
                   justifyContent: "center",
-                  height: 130
+                  height: 130,
+                  background:
+                    "radial-gradient(42% 12% at 50% 97%, rgba(0,0,0,0.28), rgba(0,0,0,0) 72%)"
                 }}
               >
                 <MonsterIcon
