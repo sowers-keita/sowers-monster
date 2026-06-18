@@ -281,43 +281,6 @@ export default function MissionPage() {
             </div>
           </div>
 
-          <div className="card" style={{ background: "#fff7e6" }}>
-            <div className="title">あいことばで 種ゲット</div>
-            <div className="note">
-              先生から おしえてもらった 今日の あいことばを 入力すると 種が
-              もらえるよ！（1つにつき 1回まで）
-            </div>
-
-            <input
-              className="input"
-              value={codeInput}
-              onChange={(event) => setCodeInput(event.target.value)}
-              placeholder="あいことばを 入力"
-            />
-
-            <button className="button orange" onClick={redeemCode} disabled={codeBusy}>
-              {codeBusy ? "かくにん中…" : "あいことばを つかう"}
-            </button>
-
-            {codeMsg && (
-              <div
-                style={{
-                  marginTop: 10,
-                  background: "white",
-                  border: "3px solid #2b1b10",
-                  borderRadius: 14,
-                  padding: 10,
-                  fontSize: 15,
-                  fontWeight: 900,
-                  color: "#2b1b10",
-                  textAlign: "center"
-                }}
-              >
-                {codeMsg}
-              </div>
-            )}
-          </div>
-
           {hqMissions.length === 0 && (
             <div className="card">
               <div className="title">メインミッションなし</div>
@@ -382,6 +345,43 @@ export default function MissionPage() {
           <button className="button orange" onClick={openSettings}>
             🔒 おうちミッションを設定する
           </button>
+
+          <div className="card" style={{ background: "#fff7e6" }}>
+            <div className="title">あいことばで 種ゲット</div>
+            <div className="note">
+              先生から おしえてもらった 今日の あいことばを 入力すると 種が
+              もらえるよ！（1つにつき 1回まで）
+            </div>
+
+            <input
+              className="input"
+              value={codeInput}
+              onChange={(event) => setCodeInput(event.target.value)}
+              placeholder="あいことばを 入力"
+            />
+
+            <button className="button orange" onClick={redeemCode} disabled={codeBusy}>
+              {codeBusy ? "かくにん中…" : "あいことばを つかう"}
+            </button>
+
+            {codeMsg && (
+              <div
+                style={{
+                  marginTop: 10,
+                  background: "white",
+                  border: "3px solid #2b1b10",
+                  borderRadius: 14,
+                  padding: 10,
+                  fontSize: 15,
+                  fontWeight: 900,
+                  color: "#2b1b10",
+                  textAlign: "center"
+                }}
+              >
+                {codeMsg}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
