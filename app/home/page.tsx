@@ -121,9 +121,9 @@ const SLIDES: Slide[] = [
     title: "トレーニング",
     text: (
       <>
-        4つの ミニゲームで <ruby>強<rt>つよ</rt></ruby>くなる。
+        ミニゲームで <ruby>強<rt>つよ</rt></ruby>くなって、
         <br />
-        1<ruby>日<rt>にち</rt></ruby>1<ruby>回<rt>かい</rt></ruby>「たね」も もらえるよ。
+        ランキングにも ちょうせんしよう！
       </>
     )
   },
@@ -132,9 +132,9 @@ const SLIDES: Slide[] = [
     title: "たね",
     text: (
       <>
-        ミッション・あいことば・
+        ミッションや「あいことば」で
         <br />
-        ランキング<ruby>上位<rt>じょうい</rt></ruby>でも たねが もらえる。
+        たねが もらえるよ。
         <br />
         たねを <ruby>使<rt>つか</rt></ruby>うと もっと <ruby>強<rt>つよ</rt></ruby>く！
       </>
