@@ -10,7 +10,7 @@ export default function RegisterChildPage() {
 
   const [parentName, setParentName] = useState("");
   const [childName, setChildName] = useState("");
-  const [classroomName, setClassroomName] = useState("徳島体操");
+  const [classroomName, setClassroomName] = useState("sowers");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
@@ -106,7 +106,12 @@ export default function RegisterChildPage() {
         .from("classrooms")
         .insert({
           name: classroomName,
-          type: classroomName === "Sowers Club" ? "Sowers Club" : "体操教室"
+          type:
+            classroomName === "sowers"
+              ? "Sowers Club"
+              : classroomName === "keyダンス"
+              ? "ダンス教室"
+              : "体操教室"
         })
         .select("id")
         .single();
@@ -179,11 +184,14 @@ export default function RegisterChildPage() {
           value={classroomName}
           onChange={(event) => setClassroomName(event.target.value)}
         >
-          <option>徳島体操</option>
-          <option>北島教室</option>
-          <option>阿南教室</option>
-          <option>吉野川教室</option>
-          <option>Sowers Club</option>
+          <option>sowers</option>
+          <option>論田体操</option>
+          <option>北島体操</option>
+          <option>小松島体操</option>
+          <option>阿南体操</option>
+          <option>上板体操</option>
+          <option>吉野川体操</option>
+          <option>keyダンス</option>
         </select>
 
         {!loggedIn && (
