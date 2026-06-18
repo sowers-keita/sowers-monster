@@ -602,7 +602,14 @@ export default function BattlePage() {
               imageRendering: "pixelated",
               background: [
                 "linear-gradient(180deg,transparent 0 72%,#6e7787 72% 75%,#59616f 75% 100%)",
-                "linear-gradient(180deg,#9fd0ff 0 40%,#cfe9ff 40% 41%,transparent 41%)",
+                (() => {
+                  const h = new Date().getHours();
+                  return h < 5 || h >= 19
+                    ? "linear-gradient(180deg,#16204a 0 40%,#2a356a 40% 41%,transparent 41%)"
+                    : h >= 16
+                    ? "linear-gradient(180deg,#ff9e6b 0 40%,#ffc79a 40% 41%,transparent 41%)"
+                    : "linear-gradient(180deg,#9fd0ff 0 40%,#cfe9ff 40% 41%,transparent 41%)";
+                })(),
                 "repeating-linear-gradient(90deg,transparent 0 8px,rgba(255,234,150,0.8) 8px 14px,transparent 14px 40px)",
                 "repeating-linear-gradient(90deg,#3f4a63 0 40px,#4a5773 40px 44px,#36405a 44px 80px)"
               ].join(",")
