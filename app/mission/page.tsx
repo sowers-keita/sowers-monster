@@ -138,12 +138,12 @@ export default function MissionPage() {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    // 今日の合言葉を探す
+    // 合言葉を探す（発行から3ヶ月以内なら有効）
     const { data: codes, error: codeError } = await supabase
       .from("reward_codes")
-      .select("id, seed_type, amount")
+      .select("id, seed_type, amount, created_at")
       .eq("code", word)
-      .eq("code_date", today)
+      .order("created_at", { ascending: false })
       .limit(1);
 
     if (codeError) {
@@ -154,7 +154,16 @@ export default function MissionPage() {
 
     const code = codes && codes[0];
     if (!code) {
-      setCodeMsg("あいことばが ちがうみたい。今日のものか かくにんしてね。");
+      setCodeMsg("あいことばが ちがうみたい。もういちど かくにんしてね。");
+      setCodeBusy(false);
+      return;
+    }
+
+    // 有効期限（発行から3ヶ月）
+    const expLimit = new Date();
+    expLimit.setMonth(expLimit.getMonth() - 3);
+    if (code.created_at && new Date(code.created_at) < expLimit) {
+      setCodeMsg("この あいことばは 期限が切れています（発行から3ヶ月まで）。");
       setCodeBusy(false);
       return;
     }
