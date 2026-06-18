@@ -21,10 +21,20 @@ export default function RegisterChildPage() {
   }, []);
 
   async function checkSession() {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      setLoggedIn(true);
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      return;
     }
+    // セッションがあってもサーバーで本人確認する。
+    // （アカウント削除後など、無効な古いセッションが残っていると
+    //   「ログイン済み」と誤判定して新規登録できなくなるため）
+    const { data: userData, error } = await supabase.auth.getUser();
+    if (error || !userData.user) {
+      await supabase.auth.signOut();
+      setLoggedIn(false);
+      return;
+    }
+    setLoggedIn(true);
   }
 
   async function register() {
@@ -43,8 +53,8 @@ export default function RegisterChildPage() {
     // 未ログインなら新規登録（既にアカウントがあればログインで継続）。
     let userId: string | null = null;
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    userId = sessionData.session?.user?.id ?? null;
+    const { data: userData } = await supabase.auth.getUser();
+    userId = userData.user?.id ?? null;
 
     if (!userId) {
       if (!email || !password) {
