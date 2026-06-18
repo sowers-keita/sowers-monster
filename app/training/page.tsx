@@ -151,8 +151,9 @@ function StopwatchTraining({
     g: GameType,
     stats: StatType[],
     pts: number,
-    score: number
-  ) => Promise<string>;
+    score: number,
+    result: string
+  ) => void;
 }) {
   const TARGET = 10;
   const SHOW_UNTIL = 5;
@@ -197,7 +198,7 @@ function StopwatchTraining({
     const pts = d <= 0.05 ? 3 : d <= 0.3 ? 2 : 1;
     const score = Math.max(1, Math.round(10000 - d * 1000));
     setStatUp(pts);
-    finish("stopwatch", ["power", "stamina"], pts, score).then((r) => setRank(r));
+    finish("stopwatch", ["power", "stamina"], pts, score, `${t.toFixed(4)} 秒！`);
   }
 
   const hidden = running && elapsed >= SHOW_UNTIL;
@@ -297,8 +298,9 @@ function NumberTouchTraining({
     g: GameType,
     stats: StatType[],
     pts: number,
-    score: number
-  ) => Promise<string>;
+    score: number,
+    result: string
+  ) => void;
 }) {
   const NN = 20;
   const makeOrder = () => {
@@ -358,9 +360,7 @@ function NumberTouchTraining({
         const pts = t <= 12 ? 3 : t <= 18 ? 2 : 1;
         const score = Math.max(1, Math.round(20000 / t));
         setStatUp(pts);
-        finish("number", ["speed", "technique"], pts, score).then((r) =>
-          setRank(r)
-        );
+        finish("number", ["speed", "technique"], pts, score, `${t.toFixed(2)} 秒！`);
       } else {
         setNext(n + 1);
       }
@@ -506,6 +506,8 @@ export default function TrainingPage() {
   const [resultText, setResultText] = useState("");
   const [rankText, setRankText] = useState("");
   const [celebrateKey, setCelebrateKey] = useState(0);
+  const [earnedLabel, setEarnedLabel] = useState("");
+  const [lastExtra, setLastExtra] = useState<"stopwatch" | "number" | null>(null);
   const [doneToday, setDoneToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -614,19 +616,41 @@ export default function TrainingPage() {
     setEarned(statPoints);
     setGotSeed(seed);
     setResultText(result || "");
+    setEarnedLabel(config.targetLabel);
+    setLastExtra(null);
     setMode("clear");
   }
 
   // 追加トレーニング（ストップウォッチ・数字タッチ）の共通仕上げ：
   // ランキング保存＋順位算出、能力（複数）を上げる。種は配布しない。
+  // 追加トレーニング（ストップウォッチ・数字タッチ）の仕上げ：
+  // 他のトレーニングと同じ共通クリア画面へ遷移し、ランキング順位を反映する。
   async function finishExtra(
     gameType: GameType,
     stats: StatType[],
     statPoints: number,
-    score: number
-  ): Promise<string> {
-    if (!monster) return "";
-    let rank = "";
+    score: number,
+    result: string
+  ): Promise<void> {
+    if (!monster) return;
+
+    // 先に共通クリア画面へ切り替え（他のトレーニングと同じ見た目）
+    const label =
+      stats.includes("power") && stats.includes("stamina")
+        ? "パワー・スタミナ"
+        : stats.includes("speed") && stats.includes("technique")
+        ? "スピード・テクニック"
+        : "のうりょく";
+    setEarned(statPoints);
+    setGotSeed(false);
+    setResultText(result);
+    setRankText("");
+    setEarnedLabel(label);
+    setLastExtra(gameType === "stopwatch" ? "stopwatch" : "number");
+    setExtra(null);
+    setMode("clear");
+
+    // ランキング保存＋順位算出（あとから反映）
     let topTen = false;
     if (score > 0) {
       try {
@@ -635,7 +659,7 @@ export default function TrainingPage() {
         const ranking = await getGameRanking(gameType, ws, 500);
         const idx = ranking.findIndex((r) => r.child_id === monster.child_id);
         if (idx >= 0) {
-          rank = `今週のランキング ${idx + 1}位 / ${ranking.length}人中`;
+          setRankText(`今週のランキング ${idx + 1}位 / ${ranking.length}人中`);
           topTen = idx < 10;
         }
       } catch {
@@ -643,6 +667,8 @@ export default function TrainingPage() {
       }
     }
     if (topTen) setCelebrateKey(Date.now()); // トップ10入りでお祝い
+
+    // 能力を上げる
     if (statPoints > 0) {
       const update: Partial<ActiveMonster> = {};
       for (const st of stats) {
@@ -667,7 +693,6 @@ export default function TrainingPage() {
         .eq("id", monster.id);
       if (!error) setMonster({ ...monster, ...update } as ActiveMonster);
     }
-    return rank;
   }
 
   if (!monster) {
@@ -816,7 +841,7 @@ export default function TrainingPage() {
 
               {earned > 0 ? (
                 <div className="title" style={{ color: "#2f8ee5" }}>
-                  {config.targetLabel} +{earned}！
+                  {earnedLabel} +{earned}！
                 </div>
               ) : (
                 <div className="title">ざんねん…</div>
@@ -832,11 +857,21 @@ export default function TrainingPage() {
                 {gotSeed
                   ? "もちもの から 種を つかうと 限界値が あがるよ！"
                   : earned > 0
-                  ? `${config.targetLabel}が ふえたよ。`
+                  ? `${earnedLabel}が ふえたよ。`
                   : "また ちょうせんしてね！"}
               </div>
 
-              <button className="button" onClick={() => setMode("playing")}>
+              <button
+                className="button"
+                onClick={() => {
+                  if (lastExtra) {
+                    setExtra(lastExtra);
+                    setMode("menu");
+                  } else {
+                    setMode("playing");
+                  }
+                }}
+              >
                 🔁 もう一度
               </button>
 
@@ -849,7 +884,11 @@ export default function TrainingPage() {
 
               <button
                 className="button gray"
-                onClick={() => setMode("menu")}
+                onClick={() => {
+                  setExtra(null);
+                  setLastExtra(null);
+                  setMode("menu");
+                }}
               >
                 メニューへ
               </button>
