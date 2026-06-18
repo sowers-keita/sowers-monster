@@ -381,8 +381,9 @@ function GameRanking({
                     whiteSpace: "nowrap"
                   }}
                 >
-                  {row.score}
-                  {gameScoreUnit[game]}
+                  {game === "number"
+                    ? `${(20000 / row.score).toFixed(2)}秒`
+                    : `${row.score}${gameScoreUnit[game]}`}
                 </div>
               </div>
             );
