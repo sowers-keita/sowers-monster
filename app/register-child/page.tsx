@@ -92,9 +92,17 @@ export default function RegisterChildPage() {
     }
 
     // プロフィール（保護者）を作成・更新
+    // 既存が管理者(admin)の場合は降格させない（管理者がテストで子登録しても権限維持）
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+    const keepRole = existingProfile?.role === "admin" ? "admin" : "parent";
+
     const { error: profileError } = await supabase
       .from("profiles")
-      .upsert({ id: userId, name: parentName, role: "parent" });
+      .upsert({ id: userId, name: parentName, role: keepRole });
 
     if (profileError) {
       alert(profileError.message);
