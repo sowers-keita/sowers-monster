@@ -197,7 +197,7 @@ function StopwatchTraining({
     setBest((b) => (b === null || d < b ? d : b));
     // 7秒より早く止めた場合は成長なし（0）
     const pts = t < 7 ? 0 : d <= 0.05 ? 3 : d <= 0.3 ? 2 : 1;
-    const score = Math.round(t * 1000); // 押した時間(ms)。10000ms(=10秒)に近いほど上位
+    const score = Math.round(t * 10000); // 押した時間(0.1ms単位)。100000(=10.0000秒)に近いほど上位
     setStatUp(pts);
     finish("stopwatch", ["power", "stamina"], pts, score, `${t.toFixed(4)} 秒！`);
   }
