@@ -274,10 +274,30 @@ export default function MissionPage() {
         <div className="header">ミッション</div>
 
         <div className="content" style={{ paddingBottom: 92 }}>
-          <div className="card">
-            <div className="title">今日のミッション</div>
-            <div className="note">
-              メインミッションとおうちミッションは、それぞれ1日1回達成できます。
+          <div
+            style={{
+              background: "#2bb869",
+              color: "#fff",
+              border: "4px solid #2b1b10",
+              borderRadius: 18,
+              boxShadow: "0 5px 0 #2b1b10",
+              padding: "14px 16px",
+              marginBottom: 12,
+              textAlign: "center"
+            }}
+          >
+            <div style={{ fontSize: 23, fontWeight: 900, letterSpacing: 1 }}>
+              📋 今日のミッション
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                marginTop: 4,
+                opacity: 0.95
+              }}
+            >
+              メイン・おうち、それぞれ 1日1回 達成できるよ！
             </div>
           </div>
 
