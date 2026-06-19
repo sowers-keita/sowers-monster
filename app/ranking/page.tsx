@@ -394,7 +394,7 @@ function GameRanking({
                   {game === "number"
                     ? `${(20000 / row.score).toFixed(2)}秒`
                     : game === "stopwatch"
-                    ? `${(row.score / 1000).toFixed(2)}秒`
+                    ? `${(row.score / 10000).toFixed(4)}秒`
                     : `${row.score}${gameScoreUnit[game]}`}
                 </div>
               </div>
