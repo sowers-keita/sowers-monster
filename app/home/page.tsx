@@ -266,7 +266,13 @@ export default function HomePage() {
       .single();
 
     if (!child) {
-      router.push("/register-child");
+      // 管理者など子どもがいない場合の保険：管理者は管理画面へ
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
+      router.push(prof?.role === "admin" ? "/admin-sowers" : "/register-child");
       return;
     }
 
