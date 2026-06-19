@@ -29,6 +29,24 @@ export default function LoginPage() {
       return;
     }
 
+    // 管理者は管理画面へ、それ以外は育成アプリのホームへ
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (u.user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", u.user.id)
+          .maybeSingle();
+        if (prof?.role === "admin") {
+          router.push("/admin-sowers");
+          return;
+        }
+      }
+    } catch {
+      // 失敗してもホームへ
+    }
+
     router.push("/home");
   }
 
