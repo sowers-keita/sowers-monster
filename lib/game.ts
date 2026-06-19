@@ -264,7 +264,13 @@ export async function saveGameScore(
     .maybeSingle();
 
   if (existing) {
-    if (score > Number(existing.score || 0)) {
+    // ストップウォッチは「10.000秒(=10000ms)にいちばん近い」記録をベストにする。
+    // それ以外のゲームは これまで通り 高いスコアがベスト。
+    const better =
+      gameType === "stopwatch"
+        ? Math.abs(score - 10000) < Math.abs(Number(existing.score || 0) - 10000)
+        : score > Number(existing.score || 0);
+    if (better) {
       await supabase
         .from("game_scores")
         .update({ score, updated_at: new Date().toISOString() })
@@ -293,16 +299,34 @@ export async function getGameRanking(
   weekStartStr: string,
   limit = 30
 ): Promise<GameRankRow[]> {
-  const { data } = await supabase
-    .from("game_scores")
-    .select("child_id, score, children ( name, classrooms ( name ) )")
-    .eq("game_type", gameType)
-    .eq("week_start", weekStartStr)
-    .order("score", { ascending: false })
-    .limit(limit);
-
+  // ストップウォッチは「10.000秒(=10000ms)に近い順」で並べる（点数ではなく時間で競う）。
+  // 近さはSQLで並べられないため、その週の記録を全件取得してから並べ替える。
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data || []) as any[]).map((r) => ({
+  let rows: any[] = [];
+  if (gameType === "stopwatch") {
+    const { data } = await supabase
+      .from("game_scores")
+      .select("child_id, score, children ( name, classrooms ( name ) )")
+      .eq("game_type", gameType)
+      .eq("week_start", weekStartStr);
+    rows = ((data || []) as any[]).slice();
+    rows.sort(
+      (a, b) =>
+        Math.abs(Number(a.score) - 10000) - Math.abs(Number(b.score) - 10000)
+    );
+    rows = rows.slice(0, limit);
+  } else {
+    const { data } = await supabase
+      .from("game_scores")
+      .select("child_id, score, children ( name, classrooms ( name ) )")
+      .eq("game_type", gameType)
+      .eq("week_start", weekStartStr)
+      .order("score", { ascending: false })
+      .limit(limit);
+    rows = (data || []) as any[];
+  }
+
+  return rows.map((r) => ({
     child_id: r.child_id,
     score: r.score,
     child_name: r.children?.name || "なまえ未設定",
