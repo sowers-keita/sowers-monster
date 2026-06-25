@@ -1,6 +1,7 @@
 "use client";
 
 import BottomNav from "@/components/BottomNav";
+import CelebrationConfetti from "@/components/CelebrationConfetti";
 import {
   SeedType,
   addSeedToChild,
@@ -39,6 +40,8 @@ export default function MissionPage() {
   const [codeInput, setCodeInput] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
   const [codeBusy, setCodeBusy] = useState(false);
+  const [fxKey, setFxKey] = useState(0);
+  const [gotSeed, setGotSeed] = useState<{ type: SeedType; amount: number } | null>(null);
   const [pinGate, setPinGate] = useState<"none" | "enter" | "set">("none");
   const [gatePin, setGatePin] = useState("");
   const [gatePin2, setGatePin2] = useState("");
@@ -185,6 +188,8 @@ export default function MissionPage() {
         `🌱 ${seedLabels[code.seed_type as SeedType]} +${code.amount} を ゲット！`
       );
       setCodeInput("");
+      setGotSeed({ type: code.seed_type as SeedType, amount: code.amount });
+      setFxKey((k) => k + 1);
     } catch (e) {
       // 種付与に失敗したら、先に入れたログを取り消して再挑戦できるようにする
       // （これをしないと「もう つかった」状態で種が永久にもらえなくなる）
@@ -485,6 +490,18 @@ export default function MissionPage() {
         </div>
       )}
 
+      <CelebrationConfetti fireKey={fxKey} />
+      {gotSeed && (
+        <div onClick={() => setGotSeed(null)} style={{ position: "fixed", inset: 0, zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.45)" }}>
+          <div style={{ background: "#fff", borderRadius: 24, padding: "28px 30px", textAlign: "center", boxShadow: "0 18px 50px rgba(0,0,0,.3)", animation: "seedpop .5s cubic-bezier(.2,.8,.3,1.5)", maxWidth: 300 }}>
+            <div style={{ fontSize: 74, lineHeight: 1 }}>🌱</div>
+            <div style={{ fontWeight: 900, fontSize: 24, marginTop: 6, color: "#2b1b10" }}>たねを ゲット！</div>
+            <div style={{ fontSize: 19, fontWeight: 900, color: "#2bb869", marginTop: 4 }}>{seedLabels[gotSeed.type]} ＋{gotSeed.amount}</div>
+            <button className="button orange" style={{ marginTop: 16 }} onClick={() => setGotSeed(null)}>やったね！</button>
+          </div>
+          <style>{`@keyframes seedpop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}`}</style>
+        </div>
+      )}
       <BottomNav active="mission" />
     </main>
   );
