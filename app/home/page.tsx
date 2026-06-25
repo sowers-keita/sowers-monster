@@ -92,7 +92,7 @@ const SLIDES: Slide[] = [
     title: "ようこそ！",
     text: (
       <>
-        サワーズモンスターへ ようこそ！
+        たねもんへ ようこそ！
         <br />
         <ruby>自分<rt>じぶん</rt></ruby>だけの モンスターを
         <br />
@@ -226,6 +226,7 @@ export default function HomePage() {
   const [weeklyRewards, setWeeklyRewards] = useState<WeeklyRewardResult[]>([]);
   const [busyStat, setBusyStat] = useState<StatKey | "">("");
   const [flashStat, setFlashStat] = useState<StatKey | "">("");
+  const [statPop, setStatPop] = useState<{ stat: StatKey; inc: number } | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
@@ -439,6 +440,8 @@ export default function HomePage() {
       );
       setFlashStat(stat);
       window.setTimeout(() => setFlashStat(""), 700);
+      setStatPop({ stat, inc });
+      window.setTimeout(() => setStatPop(null), 1400);
     } catch (e) {
       alert(e instanceof Error ? e.message : "失敗しました");
     }
@@ -514,8 +517,10 @@ export default function HomePage() {
 .evo-pop{animation:evo-pop .5s ease-out;}
 @keyframes evo-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
 .evo-ready{animation:evo-pulse 1s ease-in-out infinite;}
-@keyframes stat-flash{0%{box-shadow:0 0 0 0 rgba(255,210,60,.9);}100%{box-shadow:0 0 0 14px rgba(255,210,60,0);}}
-.stat-flash{animation:stat-flash .7s ease-out;}
+@keyframes stat-flash{0%{box-shadow:0 0 0 0 rgba(255,210,60,1);filter:brightness(1.7);}40%{filter:brightness(1.3);}100%{box-shadow:0 0 0 24px rgba(255,210,60,0);filter:brightness(1);}}
+.stat-flash{animation:stat-flash .85s ease-out;}
+@keyframes statpop-rise{0%{transform:translate(-50%,12px) scale(.6);opacity:0;}22%{opacity:1;transform:translate(-50%,0) scale(1.12);}78%{opacity:1;}100%{transform:translate(-50%,-44px) scale(1);opacity:0;}}
+.statpop{position:fixed;left:50%;top:40%;z-index:100000;pointer-events:none;font-weight:900;font-size:26px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.45);animation:statpop-rise 1.4s ease-out forwards;text-align:center;line-height:1.3;}
 ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
 `}</style>
 
@@ -1249,6 +1254,12 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
         </div>
       )}
 
+      {statPop && (
+        <div className="statpop">
+          ⬆️ {({ power: "パワー", stamina: "スタミナ", speed: "スピード", technique: "テクニック" } as Record<string, string>)[statPop.stat]}アップ！
+          <div style={{ fontSize: 38, color: "#ffd23c" }}>＋{statPop.inc}</div>
+        </div>
+      )}
       <BottomNav active="home" />
     </main>
   );
