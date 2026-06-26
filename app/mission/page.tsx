@@ -494,7 +494,7 @@ export default function MissionPage() {
       {gotSeed && (
         <div onClick={() => setGotSeed(null)} style={{ position: "fixed", inset: 0, zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.45)" }}>
           <div style={{ background: "#fff", borderRadius: 24, padding: "28px 30px", textAlign: "center", boxShadow: "0 18px 50px rgba(0,0,0,.3)", animation: "seedpop .5s cubic-bezier(.2,.8,.3,1.5)", maxWidth: 300 }}>
-            <div style={{ fontSize: 74, lineHeight: 1 }}>🌱</div>
+            <SeedIcon seedType={gotSeed.type} />
             <div style={{ fontWeight: 900, fontSize: 24, marginTop: 6, color: "#2b1b10" }}>たねを ゲット！</div>
             <div style={{ fontSize: 19, fontWeight: 900, color: "#2bb869", marginTop: 4 }}>{seedLabels[gotSeed.type]} ＋{gotSeed.amount}</div>
             <button className="button orange" style={{ marginTop: 16 }} onClick={() => setGotSeed(null)}>やったね！</button>
@@ -571,6 +571,52 @@ function MissionCard({
       >
         {done ? "本日達成済み" : "達成した！"}
       </button>
+    </div>
+  );
+}
+
+
+// 持ち物画面と同じ「芽が出た種」アイコン（能力ごとに色ちがい・全種類対応）
+function SeedIcon({ seedType }: { seedType: SeedType }) {
+  const background =
+    seedType === "power"
+      ? "linear-gradient(135deg, #ff3d25, #ff8a00)"
+      : seedType === "stamina"
+      ? "linear-gradient(135deg, #1383ff, #22c0ff)"
+      : seedType === "speed"
+      ? "linear-gradient(135deg, #42b72a, #b9ff35)"
+      : seedType === "technique"
+      ? "linear-gradient(135deg, #6f2dd8, #cc76ff)"
+      : seedType === "all"
+      ? "linear-gradient(135deg, #ffb000, #ffe96a)"
+      : "linear-gradient(135deg, #ff335f, #ffb000, #39d353, #18a0fb, #a83dff)";
+
+  return (
+    <div
+      style={{
+        width: 92,
+        height: 110,
+        border: "5px solid #2b1b10",
+        borderRadius: "50% 50% 44% 44%",
+        background,
+        margin: "4px auto 8px",
+        boxShadow: "inset -12px -14px 0 rgba(0,0,0,0.15)",
+        position: "relative"
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 18,
+          top: -8,
+          width: 56,
+          height: 27,
+          background: "#54b83f",
+          border: "4px solid #2b1b10",
+          borderRadius: "50% 50% 35% 35%",
+          transform: "rotate(-8deg)"
+        }}
+      />
     </div>
   );
 }
