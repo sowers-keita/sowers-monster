@@ -11,7 +11,10 @@ import {
   gameLabels,
   getMySeeds,
   getSeedMaxIncrease,
-  seedLabels
+  seedLabels,
+  getMyChild,
+  getMyChildren,
+  setActiveChildId
 } from "@/lib/game";
 import { supabase } from "@/lib/supabaseClient";
 import { isSaved, updateAccountTokens } from "@/lib/accounts";
@@ -215,6 +218,8 @@ export default function HomePage() {
 
   const [monster, setMonster] = useState<HomeMonster | null>(null);
   const [childName, setChildName] = useState("");
+  const [children, setChildren] = useState<{ id: string; name: string }[]>([]);
+  const [activeChildId, setActiveChildIdState] = useState("");
   const [seeds, setSeeds] = useState<SeedItem[]>([]);
   const [top5, setTop5] = useState<TopRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,6 +234,12 @@ export default function HomePage() {
   const [statPop, setStatPop] = useState<{ stat: StatKey; inc: number } | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+
+  function switchChild(id: string) {
+    if (id === activeChildId) return;
+    setActiveChildId(id);
+    window.location.reload();
+  }
 
   function finishTutorial() {
     try {
@@ -259,14 +270,8 @@ export default function HomePage() {
       return;
     }
 
-    const { data: child } = await supabase
-      .from("children")
-      .select("id, name")
-      .eq("parent_id", userId)
-      .limit(1)
-      .single();
-
-    if (!child) {
+    const kids = await getMyChildren();
+    if (!kids.length) {
       // 管理者など子どもがいない場合の保険：管理者は管理画面へ
       const { data: prof } = await supabase
         .from("profiles")
@@ -276,7 +281,9 @@ export default function HomePage() {
       router.push(prof?.role === "admin" ? "/admin-sowers" : "/register-child");
       return;
     }
-
+    const child = (await getMyChild())!;
+    setChildren(kids.map((k) => ({ id: k.id, name: k.name })));
+    setActiveChildIdState(child.id);
     setChildName(child.name);
     // クイック切り替え登録済みなら、最新トークンを保存し直す（切り替え失敗を防ぐ）
     try {
@@ -707,6 +714,54 @@ ruby rt{font-size:.5em;font-weight:800;color:#6b4a2e;}
                     キャンセル
                   </button>
                 </div>
+              </div>
+            )}
+
+            {children.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  marginTop: 8
+                }}
+              >
+                {children.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => switchChild(c.id)}
+                    style={{
+                      border: "2px solid #2b1b10",
+                      borderRadius: 999,
+                      padding: "5px 12px",
+                      fontWeight: 900,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      background: c.id === activeChildId ? "#ff7a00" : "#fff",
+                      color: c.id === activeChildId ? "#fff" : "#2b1b10"
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+                {children.length < 3 && (
+                  <button
+                    onClick={() => router.push("/register-child")}
+                    style={{
+                      border: "2px dashed #2b1b10",
+                      borderRadius: 999,
+                      padding: "5px 12px",
+                      fontWeight: 900,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      background: "#fff",
+                      color: "#2b1b10"
+                    }}
+                  >
+                    ＋育成者
+                  </button>
+                )}
               </div>
             )}
 
