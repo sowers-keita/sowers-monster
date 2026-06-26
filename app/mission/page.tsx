@@ -171,13 +171,24 @@ export default function MissionPage() {
       return;
     }
 
-    // すでに使っていないか（1人1回）。先にログを入れて重複を防止する。
-    const { error: logError } = await supabase
-      .from("reward_code_logs")
-      .insert({ child_id: childId, reward_code_id: code.id });
+    // 世界で1回だけ使用可（誰かが使ったら無効）。サーバー関数で原子的に予約する。
+    const { data: redeemResult, error: redeemError } = await supabase.rpc(
+      "redeem_reward_code",
+      { p_child_id: childId, p_code_id: code.id }
+    );
 
-    if (logError) {
-      setCodeMsg("この あいことばは もう つかったよ。");
+    if (redeemError) {
+      setCodeMsg("つうしんエラーです。もう一度お試しください。");
+      setCodeBusy(false);
+      return;
+    }
+    if (redeemResult === "used") {
+      setCodeMsg("この あいことばは もう つかわれています。");
+      setCodeBusy(false);
+      return;
+    }
+    if (redeemResult !== "ok") {
+      setCodeMsg("この あいことばは つかえません。");
       setCodeBusy(false);
       return;
     }
