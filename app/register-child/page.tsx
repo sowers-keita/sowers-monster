@@ -2,6 +2,7 @@
 
 import Phone from "@/components/Phone";
 import { supabase } from "@/lib/supabaseClient";
+import { setActiveChildId } from "@/lib/game";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -143,27 +144,36 @@ export default function RegisterChildPage() {
       classroomId = newClassroom.id;
     }
 
-    // すでに子どもが登録済みなら重複作成しない
-    const { data: existingChild } = await supabase
+    // 育成者は1アカウントにつき最大3人まで
+    const { data: existingKids } = await supabase
       .from("children")
       .select("id")
-      .eq("parent_id", userId)
-      .limit(1)
-      .maybeSingle();
+      .eq("parent_id", userId);
 
-    if (!existingChild) {
-      const { error: childError } = await supabase.from("children").insert({
+    if ((existingKids?.length || 0) >= 3) {
+      alert("育成者は1つのアカウントにつき最大3人までです。");
+      setSaving(false);
+      return;
+    }
+
+    const { data: newChild, error: childError } = await supabase
+      .from("children")
+      .insert({
         parent_id: userId,
         name: childName,
         classroom_id: classroomId
-      });
+      })
+      .select("id")
+      .single();
 
-      if (childError) {
-        alert(childError.message);
-        setSaving(false);
-        return;
-      }
+    if (childError || !newChild) {
+      alert(childError?.message || "登録に失敗しました");
+      setSaving(false);
+      return;
     }
+
+    // 追加した育成者をアクティブにして、その子のモンスターを作る
+    setActiveChildId(newChild.id);
 
     setSaving(false);
     router.push("/egg-select");
