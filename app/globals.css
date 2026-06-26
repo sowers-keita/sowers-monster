@@ -229,7 +229,7 @@ button:active {
 /* ===== 下メニュー（すりガラス） ===== */
 .bottom-nav {
   position: fixed;
-  bottom: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 24px);
@@ -549,7 +549,7 @@ button:active {
   .bottom-nav {
     width: calc(100% - 16px);
     max-width: 100%;
-    bottom: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
 }
 

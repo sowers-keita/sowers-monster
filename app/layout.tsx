@@ -1,5 +1,11 @@
 import "./globals.css";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const
+};
+
 export const metadata = {
   title: "たねもん",
   description: "sowers たねもん（育成アプリ）",
