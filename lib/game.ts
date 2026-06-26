@@ -69,25 +69,51 @@ export async function getCurrentUserId() {
   return data.user.id;
 }
 
-export async function getMyChild(): Promise<ActiveChild | null> {
-  const userId = await getCurrentUserId();
+const ACTIVE_CHILD_KEY = "swm_active_child";
 
-  if (!userId) {
+export function getActiveChildId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(ACTIVE_CHILD_KEY);
+  } catch {
     return null;
   }
+}
+
+export function setActiveChildId(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ACTIVE_CHILD_KEY, id);
+  } catch {
+    // 無視
+  }
+}
+
+// 1アカウントの育成者（子）を全員（最大3人）取得
+export async function getMyChildren(): Promise<ActiveChild[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
 
   const { data, error } = await supabase
     .from("children")
     .select("id, name, classroom_id")
     .eq("parent_id", userId)
-    .limit(1)
-    .single();
+    .order("created_at", { ascending: true });
 
-  if (error || !data) {
-    return null;
-  }
+  if (error || !data) return [];
+  return data as ActiveChild[];
+}
 
-  return data as ActiveChild;
+// いま選択中の育成者を返す（未選択なら先頭を選択して保存）
+export async function getMyChild(): Promise<ActiveChild | null> {
+  const list = await getMyChildren();
+  if (!list.length) return null;
+
+  const activeId = getActiveChildId();
+  const found = activeId ? list.find((c) => c.id === activeId) : null;
+  const child = found || list[0];
+  if (!found) setActiveChildId(child.id);
+  return child;
 }
 
 export async function getMyActiveMonster(): Promise<ActiveMonster | null> {
@@ -268,7 +294,7 @@ export async function saveGameScore(
     // それ以外のゲームは これまで通り 高いスコアがベスト。
     const better =
       gameType === "stopwatch"
-        ? Math.abs(score - 10000) < Math.abs(Number(existing.score || 0) - 10000)
+        ? Math.abs(score - 100000) < Math.abs(Number(existing.score || 0) - 100000)
         : score > Number(existing.score || 0);
     if (better) {
       await supabase
@@ -312,7 +338,7 @@ export async function getGameRanking(
     rows = ((data || []) as any[]).slice();
     rows.sort(
       (a, b) =>
-        Math.abs(Number(a.score) - 10000) - Math.abs(Number(b.score) - 10000)
+        Math.abs(Number(a.score) - 100000) - Math.abs(Number(b.score) - 100000)
     );
     rows = rows.slice(0, limit);
   } else {
