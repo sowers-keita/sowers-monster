@@ -4,6 +4,7 @@ import MonsterIcon from "@/components/MonsterIcon";
 import Phone from "@/components/Phone";
 import { supabase } from "@/lib/supabaseClient";
 import { EggColor } from "@/lib/types";
+import { getMyChild } from "@/lib/game";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
@@ -52,14 +53,9 @@ function EggHatchInner() {
       return;
     }
 
-    const { data: child, error: childError } = await supabase
-      .from("children")
-      .select("id")
-      .eq("parent_id", userId)
-      .limit(1)
-      .single();
+    const child = await getMyChild();
 
-    if (childError || !child) {
+    if (!child) {
       alert("子ども情報が見つかりません");
       router.push("/register-child");
       return;
