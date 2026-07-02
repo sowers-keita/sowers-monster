@@ -211,7 +211,7 @@ export default function RegisterChildPage() {
     setActiveChildId(newChild.id);
 
     setSaving(false);
-    router.push("/egg-select");
+    router.push("/setup-pin"); // 保護者暗証番号の設定へ（設定済みなら自動で卵選びへ）
   }
 
   return (
