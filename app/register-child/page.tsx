@@ -64,25 +64,60 @@ export default function RegisterChildPage() {
         return;
       }
 
+      const cleanEmail = email.trim();
+
       const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({ email, password });
+        await supabase.auth.signUp({ email: cleanEmail, password });
 
       if (signUpError) {
-        // 既にアカウントがある場合などはログインを試す
-        const { data: signInData, error: signInError } =
-          await supabase.auth.signInWithPassword({ email, password });
+        // 既にアカウントがある場合はログインで続きから再開できる
+        const { data: signInData } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password
+        });
 
-        if (signInError || !signInData.user) {
-          alert(
-            "このメールアドレスは既に登録されています。パスワードが正しいかご確認ください。"
-          );
+        if (signInData?.user) {
+          userId = signInData.user.id;
+        } else {
+          const reason = (signUpError.message || "").toLowerCase();
+          if (reason.includes("already") || reason.includes("registered")) {
+            alert(
+              "このメールアドレスは既に登録されています。同じパスワードを入力すると続きから再開できます。パスワードを忘れた場合は、ログイン画面の「パスワードを忘れた方はこちら」から再設定してください。"
+            );
+          } else if (reason.includes("password")) {
+            alert("パスワードは6文字以上で設定してください。");
+          } else if (reason.includes("email") || reason.includes("invalid")) {
+            alert("メールアドレスの形式が正しくありません。ご確認ください。");
+          } else {
+            alert("登録に失敗しました：" + signUpError.message);
+          }
           setSaving(false);
           return;
         }
-
-        userId = signInData.user.id;
       } else {
-        userId = signUpData.user?.id ?? null;
+        // Supabaseは既存メールでもエラー無しで返すことがある（セッションは作られない）。
+        // セッションが無いまま進むと途中で失敗して中途半端な状態になるため、ここで確認する。
+        const { data: sessionAfter } = await supabase.auth.getSession();
+
+        if (sessionAfter.session) {
+          userId = signUpData.user?.id ?? null;
+        } else {
+          // 既存メールの可能性が高いのでログインを試す
+          const { data: signInData } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password
+          });
+
+          if (signInData?.user) {
+            userId = signInData.user.id;
+          } else {
+            alert(
+              "このメールアドレスは既に登録されている可能性があります。ログイン画面からログインするか、「パスワードを忘れた方はこちら」でパスワードを再設定してください。"
+            );
+            setSaving(false);
+            return;
+          }
+        }
       }
     }
 
