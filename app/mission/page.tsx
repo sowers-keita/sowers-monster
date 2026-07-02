@@ -63,6 +63,10 @@ export default function MissionPage() {
 
     const today = ymdLocal(new Date());
 
+    // 今日の本部ミッションが未作成なら自動作成する（曜日の週間スケジュール）
+    // 失敗しても表示は続行する
+    await supabase.rpc("ensure_hq_mission_today");
+
     const { data: missionData, error: missionError } = await supabase
       .from("missions")
       .select("*")
