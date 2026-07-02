@@ -9,6 +9,7 @@ import {
   seedLabels,
   ymdLocal
 } from "@/lib/game";
+import { getParentPin, setParentPin } from "@/lib/pin";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -46,6 +47,8 @@ export default function MissionPage() {
   const [gatePin, setGatePin] = useState("");
   const [gatePin2, setGatePin2] = useState("");
   const [gateMsg, setGateMsg] = useState("");
+  const [gateNext, setGateNext] = useState<"settings" | "stay">("settings");
+  const [pinSet, setPinSet] = useState(false);
 
   useEffect(() => {
     loadMissions();
@@ -90,6 +93,9 @@ export default function MissionPage() {
       setLoading(false);
       return;
     }
+
+    const savedPin = await getParentPin();
+    setPinSet(!!savedPin);
 
     setMissions((missionData || []) as Mission[]);
     setLogs((logData || []) as MissionLog[]);
@@ -222,17 +228,27 @@ export default function MissionPage() {
   }
 
   // 設定画面（おうちミッション）へは暗証番号が必要
-  function openSettings() {
+  async function openSettings() {
     setGatePin("");
     setGatePin2("");
     setGateMsg("");
-    const saved = localStorage.getItem("parentPin");
+    setGateNext("settings");
+    const saved = await getParentPin();
     setPinGate(saved ? "enter" : "set"); // 初回は設定、以降は入力
   }
 
-  function submitGateEnter() {
-    const saved = localStorage.getItem("parentPin") || "1234";
-    if (gatePin !== saved) {
+  // ミッション承認の前に暗証番号が未設定なら、先に設定してもらう
+  function openPinSetup() {
+    setGatePin("");
+    setGatePin2("");
+    setGateMsg("");
+    setGateNext("stay");
+    setPinGate("set");
+  }
+
+  async function submitGateEnter() {
+    const saved = await getParentPin();
+    if (!saved || gatePin !== saved) {
       setGateMsg("暗証番号が ちがいます");
       return;
     }
@@ -240,7 +256,7 @@ export default function MissionPage() {
     router.push("/parent-settings");
   }
 
-  function submitGateSet() {
+  async function submitGateSet() {
     if (!/^[0-9]{4}$/.test(gatePin)) {
       setGateMsg("4桁の数字で 決めてね");
       return;
@@ -249,13 +265,25 @@ export default function MissionPage() {
       setGateMsg("2回とも 同じ番号を 入力してね");
       return;
     }
-    localStorage.setItem("parentPin", gatePin);
+    const ok = await setParentPin(gatePin);
+    if (!ok) {
+      setGateMsg("保存に しっぱいしました。もう一度 ためしてね");
+      return;
+    }
+    setPinSet(true);
     setPinGate("none");
-    router.push("/parent-settings");
+    if (gateNext === "settings") {
+      router.push("/parent-settings");
+    }
   }
 
-  async function approveParentMission(mission: Mission) {
-    const savedPin = localStorage.getItem("parentPin") || "1234";
+  async function approveMission(mission: Mission) {
+    const savedPin = await getParentPin();
+
+    if (!savedPin) {
+      openPinSetup();
+      return;
+    }
 
     if (pin !== savedPin) {
       alert("暗証番号が違います");
@@ -329,13 +357,51 @@ export default function MissionPage() {
           )}
 
           {hqMissions.map((mission) => (
-            <MissionCard
-              key={mission.id}
-              mission={mission}
-              done={isDone(mission.id)}
-              label="メインミッション"
-              onComplete={() => completeMission(mission)}
-            />
+            <div key={mission.id}>
+              <MissionCard
+                mission={mission}
+                done={isDone(mission.id)}
+                label="メインミッション"
+                onComplete={() => setSelectedParentMissionId(mission.id)}
+              />
+
+              {selectedParentMissionId === mission.id && !isDone(mission.id) && (
+                <div className="card">
+                  <div className="title">おうちの人の承認</div>
+
+                  {pinSet ? (
+                    <>
+                      <label className="label">暗証番号</label>
+                      <input
+                        className="input"
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={pin}
+                        onChange={(event) => setPin(event.target.value)}
+                      />
+
+                      <button
+                        className="button blue"
+                        onClick={() => approveMission(mission)}
+                      >
+                        承認する
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="note" style={{ textAlign: "left" }}>
+                        達成の確認は おうちの人が します。先に 保護者の暗証番号を
+                        設定してください。
+                      </div>
+                      <button className="button orange" onClick={openPinSetup}>
+                        暗証番号を 設定する
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
 
           {parentMissions.length === 0 && (
@@ -361,22 +427,36 @@ export default function MissionPage() {
                 <div className="card">
                   <div className="title">おうちの人の承認</div>
 
-                  <label className="label">暗証番号</label>
-                  <input
-                    className="input"
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    value={pin}
-                    onChange={(event) => setPin(event.target.value)}
-                  />
+                  {pinSet ? (
+                    <>
+                      <label className="label">暗証番号</label>
+                      <input
+                        className="input"
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={pin}
+                        onChange={(event) => setPin(event.target.value)}
+                      />
 
-                  <button
-                    className="button blue"
-                    onClick={() => approveParentMission(mission)}
-                  >
-                    承認する
-                  </button>
+                      <button
+                        className="button blue"
+                        onClick={() => approveMission(mission)}
+                      >
+                        承認する
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="note" style={{ textAlign: "left" }}>
+                        達成の確認は おうちの人が します。先に 保護者の暗証番号を
+                        設定してください。
+                      </div>
+                      <button className="button orange" onClick={openPinSetup}>
+                        暗証番号を 設定する
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -448,7 +528,7 @@ export default function MissionPage() {
             </div>
             <div className="note" style={{ textAlign: "left" }}>
               {pinGate === "set"
-                ? "暗証番号は、子どもが かってに ミッションを 作れないように、おうちの人だけが 設定画面に 入るための ものです。4桁の数字を 決めてください。"
+                ? "暗証番号は、子どもが かってに ミッションを 達成したり 作ったり できないように、おうちの人が つかう ものです。4桁の数字を 決めてください。"
                 : "おうちミッションの設定は、おうちの人だけが できます。暗証番号を 入力してください。"}
             </div>
 
