@@ -1,6 +1,7 @@
 "use client";
 
 import { SeedType, ymdLocal } from "@/lib/game";
+import { getParentPin, setParentPin } from "@/lib/pin";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,7 +19,7 @@ export default function ParentSettingsPage() {
     useState("今日、帰ってきたら靴をそろえよう。");
   const [rewardSeedType, setRewardSeedType] = useState<SeedType>("power");
   const [rewardAmount, setRewardAmount] = useState(1);
-  const [pin, setPin] = useState("1234");
+  const [pin, setPin] = useState("");
 
   useEffect(() => {
     load();
@@ -58,7 +59,7 @@ export default function ParentSettingsPage() {
 
     setParentName(profile?.name || "");
 
-    const savedPin = localStorage.getItem("parentPin");
+    const savedPin = await getParentPin();
 
     if (savedPin) {
       setPin(savedPin);
@@ -185,13 +186,17 @@ export default function ParentSettingsPage() {
     router.push("/mission");
   }
 
-  function savePin() {
+  async function savePin() {
     if (!/^[0-9]{4}$/.test(pin)) {
       alert("4桁の数字で入力してください");
       return;
     }
 
-    localStorage.setItem("parentPin", pin);
+    const ok = await setParentPin(pin);
+    if (!ok) {
+      alert("保存に失敗しました。もう一度お試しください");
+      return;
+    }
     alert("暗証番号を保存しました");
   }
 
